@@ -1,7 +1,6 @@
 package br.com.fernandolopez;
 
 import java.util.Map;
-
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -49,25 +48,16 @@ public class HttpSinkConnectConfig extends AbstractConfig {
     public static final String PMENOS_SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_CONF = "pmenos.sink.endpoint.customHostHeader";
     public static final String PMENOS_SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_DOC = "To use custom host header for producer. When not set in query will be ignored. When set will override host header derived from url.";
     public static final String PMENOS_SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_DEFAULT = null;
-    
-    
-//    public static final String PMENOS_SINK_HTTPS_COMPONENT_CONNECTION_REQUEST_TIMEOUT_CONF = "pmenos.component.https.connectionRequestTimeout";
-//    public static final String PMENOS_SINK_HTTPS_COMPONENT_CONNECTION_REQUEST_TIMEOUT_DOC = "Returns the connection lease request timeout used when requesting a connection from the connection manager. A timeout value of zero is interpreted as a disabled timeout.";
-//    public static final String PMENOS_SINK_HTTPS_COMPONENT_CONNECTION_REQUEST_TIMEOUT_DEFAULT = "3 minutes";
-//    
-//    
-//    public static final String PMENOS_SINK_HTTPS_COMPONENT_CONNECT_TIMEOUT_CONF = "pmenos.component.https.connectTimeout";
-//    public static final String PMENOS_SINK_HTTPS_COMPONENT_CONNECT_TIMEOUT_DOC = "Determines the timeout until a new connection is fully established. A timeout value of zero is interpreted as an infinite timeout.";
-//    public static final String PMENOS_SINK_HTTPS_COMPONENT_CONNECT_TIMEOUT_DEFAULT = "3 minutes";
-//    
-//    public static final String PMENOS_SINK_HTTPS_COMPONENT_RESPONSE_TIMEOUT_CONF = "pmenos.component.https.responseTimeout";
-//    public static final String PMENOS_SINK_HTTPS_COMPONENT_RESPONSE_TIMEOUT_DOC = "Determines the timeout until arrival of a response from the opposite endpoint. A timeout value of zero is interpreted as an infinite timeout. Please note that response timeout may be unsupported by HTTP transports with message multiplexing.";
-//    public static final String PMENOS_SINK_HTTPS_COMPONENT_RESPONSE_TIMEOUT_DEFAULT = "0";
-    
+
     
     public static final String PMENOS_SINK_HTTPS_COMPONENT_SO_TIMEOUT_CONF = "pmenos.component.https.soTimeout";
     public static final String PMENOS_SINK_HTTPS_COMPONENT_SO_TIMEOUT_DOC = "Determines the default socket timeout value for blocking I/O operations.";
     public static final String PMENOS_SINK_HTTPS_COMPONENT_SO_TIMEOUT_DEFAULT = "3 minutes";
+    
+    public static final String PMENOS_SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_CONF = "output.data.format";
+    public static final String PMENOS_SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DOC = "output value for the request can be: string, json. default is string";
+    public static final String PMENOS_SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DEFAULT = "string";
+    
 
     protected HttpSinkConnectConfig(ConfigDef definition, Map<?, ?> originals, Map<String, ?> configProviderProps, boolean doLog) {
         super(definition, originals, configProviderProps, doLog);
@@ -96,10 +86,9 @@ public class HttpSinkConnectConfig extends AbstractConfig {
         conf.define(PMENOS_SINK_HTTPS_ENDPOINT_HTTP_METHOD_CONF,                 ConfigDef.Type.STRING,  PMENOS_SINK_HTTPS_ENDPOINT_HTTP_METHOD_DEFAULT,                 ConfigDef.Importance.MEDIUM, PMENOS_SINK_HTTPS_ENDPOINT_HTTP_METHOD_DOC);
         conf.define(PMENOS_SINK_HTTPS_ENDPOINT_COPY_HEADERS_CONF,                ConfigDef.Type.BOOLEAN, PMENOS_SINK_HTTPS_ENDPOINT_COPY_HEADERS_DEFAULT,                ConfigDef.Importance.MEDIUM, PMENOS_SINK_HTTPS_ENDPOINT_COPY_HEADERS_DOC);
         conf.define(PMENOS_SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_CONF,          ConfigDef.Type.STRING,  PMENOS_SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_DEFAULT,          ConfigDef.Importance.MEDIUM, PMENOS_SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_DOC);
-//        conf.define(PMENOS_SINK_HTTPS_COMPONENT_CONNECTION_REQUEST_TIMEOUT_CONF, ConfigDef.Type.STRING,  PMENOS_SINK_HTTPS_COMPONENT_CONNECTION_REQUEST_TIMEOUT_DEFAULT, ConfigDef.Importance.MEDIUM, PMENOS_SINK_HTTPS_COMPONENT_CONNECTION_REQUEST_TIMEOUT_DOC);
-//        conf.define(PMENOS_SINK_HTTPS_COMPONENT_CONNECT_TIMEOUT_CONF,            ConfigDef.Type.STRING,  PMENOS_SINK_HTTPS_COMPONENT_CONNECT_TIMEOUT_DEFAULT,            ConfigDef.Importance.MEDIUM, PMENOS_SINK_HTTPS_COMPONENT_CONNECT_TIMEOUT_DOC);
-//        conf.define(PMENOS_SINK_HTTPS_COMPONENT_RESPONSE_TIMEOUT_CONF,           ConfigDef.Type.STRING,  PMENOS_SINK_HTTPS_COMPONENT_RESPONSE_TIMEOUT_DEFAULT,           ConfigDef.Importance.MEDIUM, PMENOS_SINK_HTTPS_COMPONENT_RESPONSE_TIMEOUT_DOC);
         conf.define(PMENOS_SINK_HTTPS_COMPONENT_SO_TIMEOUT_CONF,                 ConfigDef.Type.STRING,  PMENOS_SINK_HTTPS_COMPONENT_SO_TIMEOUT_DEFAULT,                 ConfigDef.Importance.MEDIUM, PMENOS_SINK_HTTPS_COMPONENT_SO_TIMEOUT_DOC);
+        conf.define(PMENOS_SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_CONF,         ConfigDef.Type.STRING,  PMENOS_SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DEFAULT,         ConfigDef.Importance.LOW, PMENOS_SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DOC);
+        conf.define("topics", ConfigDef.Type.STRING, null, ConfigDef.Importance.HIGH, "");
         return conf;
 	}
 

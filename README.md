@@ -9,5 +9,5 @@ Projeto base para um connector kafka http sink
 
 /opt/bitnami/kafka/bin/connect-standalone.sh /opt/bitnami/kafka/config/connect-standalone.properties /opt/bitnami/kafka/config/connect-console-sink.properties
 
-/opt/bitnami/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic fefe-teste --from-beginning
+/opt/bitnami/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic fefe-teste --from-beginning --consumer-property group.id=connect-cluster-sink
 ```

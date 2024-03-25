@@ -2,59 +2,47 @@ package br.com.fernandolopez;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
-import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpConnection;
-import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpException;
 import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.HttpResponse;
-import org.apache.hc.core5.http.Message;
 import org.apache.hc.core5.http.impl.Http1StreamListener;
-import org.apache.hc.core5.http.impl.bootstrap.AsyncRequesterBootstrap;
-import org.apache.hc.core5.http.impl.bootstrap.HttpAsyncRequester;
 import org.apache.hc.core5.http.impl.bootstrap.HttpRequester;
 import org.apache.hc.core5.http.impl.bootstrap.RequesterBootstrap;
 import org.apache.hc.core5.http.io.SocketConfig;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.io.entity.HttpEntities;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.apache.hc.core5.http.message.RequestLine;
 import org.apache.hc.core5.http.message.StatusLine;
-import org.apache.hc.core5.http.nio.AsyncClientEndpoint;
-import org.apache.hc.core5.http.nio.AsyncRequestProducer;
-import org.apache.hc.core5.http.nio.entity.StringAsyncEntityConsumer;
-import org.apache.hc.core5.http.nio.support.AsyncRequestBuilder;
-import org.apache.hc.core5.http.nio.support.BasicResponseConsumer;
 import org.apache.hc.core5.http.protocol.HttpCoreContext;
-import org.apache.hc.core5.io.CloseMode;
-import org.apache.hc.core5.reactor.IOReactorConfig;
 import org.apache.hc.core5.util.Timeout;
+import org.apache.kafka.common.config.AbstractConfig;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-//import br.com.fernandolopez.core.Utils;
+import br.com.fernandolopez.core.Utils;
 
 
 public class HttpSinkTask extends SinkTask {
 
 	private static final Logger log = LoggerFactory.getLogger(HttpSinkTask.class);
-	HttpAsyncRequester httpRequester;
-	HttpHost target;
-	String requestUri = null;
-	String method = null;
-	//String output;
+	private HttpRequester httpRequester;
+	private HttpHost target;
+	private String requestUri = null;
+	private String method = null;
+	private String output = null;
+	private Timeout timeout;
+	private String topics;
 	
 	@Override
 	public String version() {
@@ -65,54 +53,15 @@ public class HttpSinkTask extends SinkTask {
 	public void start(Map<String, String> props) {
 		log.info("comecou aqui");
 		
-		HttpSinkConnectConfig config = new HttpSinkConnectConfig(props);
+		AbstractConfig config = new AbstractConfig(HttpSinkConnectConfig.conf(), props);
+		
 		String data = config.getString(HttpSinkConnectConfig.PMENOS_SINK_HTTPS_COMPONENT_SO_TIMEOUT_CONF);
+		topics = config.getString("topics");
+		output = config.getString(HttpSinkConnectConfig.PMENOS_SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_CONF);
 		
-		//String valueConverter = config.getString("value.converter");
-		//output = config.getString("output.data.format");
-		
-		Timeout time = Timeout.ofMilliseconds(30); //Utils.getTimeout(data);
-		final IOReactorConfig ioReactorConfig = IOReactorConfig.custom()
-                .setSoTimeout(time)
-                .build();
+		timeout = Timeout.ofSeconds(30);
 		
 		log.info("Timeout: {}", data);
-		//log.info("Value converter: {}", valueConverter);
-		httpRequester = AsyncRequesterBootstrap.bootstrap()
-				.setIOReactorConfig(ioReactorConfig)
-                .setStreamListener(new Http1StreamListener() {
-
-                	@Override
-                    public void onRequestHead(final HttpConnection connection, final HttpRequest request) {
-                        System.out.println(connection.getRemoteAddress() + " " + new RequestLine(request));
-
-                    }
-
-                    @Override
-                    public void onResponseHead(final HttpConnection connection, final HttpResponse response) {
-                        System.out.println(connection.getRemoteAddress() + " " + new StatusLine(response));
-                    }
-
-                    @Override
-                    public void onExchangeComplete(final HttpConnection connection, final boolean keepAlive) {
-                        if (keepAlive) {
-                            System.out.println(connection.getRemoteAddress() + " exchange completed (connection kept alive)");
-                        } else {
-                            System.out.println(connection.getRemoteAddress() + " exchange completed (connection closed)");
-                        }
-                    }
-
-                })
-//                .setSocketConfig(SocketConfig.custom()
-//                		.setSoTimeout(time)
-//                        .build())
-                .create();
-		
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("HTTP requester shutting down");
-            httpRequester.close(CloseMode.GRACEFUL);
-        }));
-		httpRequester.start();
 		
 		String urlBase = config.getString(HttpSinkConnectConfig.PMENOS_SINK_URL_CONF);
 		requestUri = config.getString(HttpSinkConnectConfig.PMENOS_SINK_HTTPS_PATH_HTTP_URI_CONF);
@@ -122,131 +71,152 @@ public class HttpSinkTask extends SinkTask {
 		log.info("Method: {}", method);
 		log.info("URL Base: {}", urlBase);
 		log.info("rest: {}", requestUri);
+		
 	}
 
 	@Override
 	public void put(Collection<SinkRecord> records) {
-//		final HttpCoreContext coreContext = HttpCoreContext.create();
-		
-		final Future<AsyncClientEndpoint> future = httpRequester.connect(target, Timeout.ofSeconds(5));
 		try {
-			final AsyncClientEndpoint clientEndpoint = future.get();
-			final CountDownLatch latch = new CountDownLatch(records.size());
+			httpRequester = RequesterBootstrap.bootstrap()
+	                .setStreamListener(new Http1StreamListener() {
+
+	                    @Override
+	                    public void onRequestHead(final HttpConnection connection, final HttpRequest request) {
+	                        System.out.println(connection.getRemoteAddress() + " " + new RequestLine(request));
+
+	                    }
+
+	                    @Override
+	                    public void onResponseHead(final HttpConnection connection, final HttpResponse response) {
+	                        System.out.println(connection.getRemoteAddress() + " " + new StatusLine(response));
+	                    }
+
+	                    @Override
+	                    public void onExchangeComplete(final HttpConnection connection, final boolean keepAlive) {
+	                        if (keepAlive) {
+	                            System.out.println(connection.getRemoteAddress() + " exchange completed (connection kept alive)");
+	                        } else {
+	                            System.out.println(connection.getRemoteAddress() + " exchange completed (connection closed)");
+	                        }
+	                    }
+
+	                })
+	                .setSocketConfig(SocketConfig.custom()
+	                        .setSoTimeout(30, TimeUnit.SECONDS)
+	                        .build())
+	                .create();
+			
+			for(final SinkRecord record : records) {
+				sendToHttp(record);
+			}
+			
+			httpRequester.close();
 		
-        
-			for(SinkRecord record : records) {
-				log.info("Escrevendo {}", record.value());
-				
-				AsyncRequestProducer request = getRequested(record);
-				
-				clientEndpoint.execute(
-	                    request,
-	                    new BasicResponseConsumer<>(new StringAsyncEntityConsumer()),
-	                    new FutureCallback<Message<HttpResponse, String>>() {
-
-	                        @Override
-	                        public void completed(final Message<HttpResponse, String> message) {
-	                            latch.countDown();
-	                            final HttpResponse response = message.getHead();
-	                            final String body = message.getBody();
-	                            log.info(requestUri + "->" + response.getCode());
-	                            log.info(body);
-	                            log.info("==============");
-	                        }
-
-	                        @Override
-	                        public void failed(final Exception ex) {
-	                            latch.countDown();
-	                            System.out.println(requestUri + "->" + ex);
-	                        }
-
-	                        @Override
-	                        public void cancelled() {
-	                            latch.countDown();
-	                            System.out.println(requestUri + " cancelled");
-	                        }
-
-	                    });
-	        }
-
-	        latch.await();
-	        
-	        clientEndpoint.releaseAndDiscard();
-	        httpRequester.initiateShutdown();
-	            
-	//            try (ClassicHttpResponse response = httpRequester.execute(target, request, Timeout.ofSeconds(5), coreContext)) {
-	//                log.info(requestUri + "->" + response.getCode());
-	//                log.info(EntityUtils.toString(response.getEntity()));
-	//                log.info("==============");
-	//            } catch (IOException e) {
-	//				// TODO Auto-generated catch block
-	//				e.printStackTrace();
-	//			} catch (HttpException e) {
-	//				// TODO Auto-generated catch block
-	//				e.printStackTrace();
-	//			}
-	//		}
-		} catch (InterruptedException | ExecutionException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
+			log.error(e.getMessage());
+			throw new RetriableException("Falha ao enviar mensagem", e);
+		}
+		
+	}
+	
+	
+	private void sendToHttp(SinkRecord record) throws Exception {
+		String data = record.value().toString();
+		log.info(data);
+		
+		var request = getRequested(record);
+		
+		HttpCoreContext coreContext = HttpCoreContext.create();
+		
+		try (ClassicHttpResponse response = httpRequester.execute(target, request, timeout, coreContext)) {
+            log.info(requestUri + "->" + response.getCode());
+            log.info(EntityUtils.toString(response.getEntity()));
+            log.info("==============");
+        } catch (IOException e) {
+        	log.error(e.getMessage());
+			e.printStackTrace();
+		} catch (HttpException e) {
+			log.error(e.getMessage());
 			e.printStackTrace();
 		}
 		
 	}
 
-	private AsyncRequestProducer getRequested(final SinkRecord record) {
-//		final HttpEntity body = HttpEntities.create(
-//                record.value().toString(),
-//                ContentType.TEXT_PLAIN.withCharset(StandardCharsets.UTF_8));
-		
-		
-		ContentType contentType;
-		byte[] content = record.value().toString().getBytes(StandardCharsets.UTF_8);
-		
+//	private ClassicHttpRequest getRequested(final SinkRecord record) throws Exception {
+//		//requestUri = replaceRequestUri(requestUri, record);
+//		
+//		requestUri = Utils.replaceRequestUri(requestUri,
+//				(record.key() != null)? record.key().toString() : null,
+//				topics,
+//				output,
+//				record.value());
+//		
+//		if (method.equals("GET")) {
+//			return ClassicRequestBuilder.get()
+//					.setHttpHost(target)
+//		            .setPath(requestUri)
+//		            .build();
+//		}
+//		
+//		ContentType contentType = null;
+//		byte[] content = null;
+//
+//		content = record.value().toString().getBytes(StandardCharsets.UTF_8);
+//		
 //		if (output.equals("string")) {
 //			contentType = ContentType.TEXT_PLAIN;
 //		} else {
-			contentType = ContentType.APPLICATION_JSON;
+//			contentType = ContentType.APPLICATION_JSON;
 //		}
-		
-		AsyncRequestProducer request = null;
+//
+//		
+//		ClassicRequestBuilder crb = null;
+//		
+//		if (method.equals("POST")) {
+//			crb = ClassicRequestBuilder.post();
+//		}
+//		else if (method.equals("PUT")) {
+//			crb = ClassicRequestBuilder.put();
+//		}
+//		else if (method.equals("PATCH")) {
+//			crb = ClassicRequestBuilder.patch();
+//		}
+//		else if (method.equals("DELETE")) {
+//			crb = ClassicRequestBuilder.delete();
+//		}
+//		
+//		return crb
+//				.setHttpHost(target)
+//				.setEntity(content, contentType)
+//	            .setPath(requestUri)
+//	            .build();
+//	}
+	
+	private ClassicHttpRequest getRequested(final SinkRecord record) throws Exception {
+	    String key = record.key() != null ? record.key().toString() : null;
+	    String content = record.value().toString();
+	    
+	    // Substituir placeholders na URI
+	    String requestUri = Utils.replaceRequestUri(this.requestUri, key, topics, output, content);
 
-		if (method.equals("GET")) {
-			request = AsyncRequestBuilder.get()
-					.setHttpHost(target)
-		            .setPath(requestUri)
-		            .build();
-		}
-		else if (method.equals("POST")) {
-			request = AsyncRequestBuilder.post()
-					.setHttpHost(target)
-					.setEntity(content, contentType)
-		            .setPath(requestUri)
-		            .build();
-		}
-		else if (method.equals("PUT")) {
-			request = AsyncRequestBuilder.put()
-					.setHttpHost(target)
-		            .setPath(requestUri)
-		            .build();
-		}
-		else if (method.equals("PATCH")) {
-			request = AsyncRequestBuilder.patch()
-					.setHttpHost(target)
-		            .setPath(requestUri)
-		            .build();
-		}
-		else if (method.equals("DELETE")) {
-			request = AsyncRequestBuilder.delete()
-					.setHttpHost(target)
-		            .setPath(requestUri)
-		            .build();
-		}
-		return request;
+	    ClassicRequestBuilder crb = ClassicRequestBuilder.create(method)
+	            .setHttpHost(target)
+	            .setPath(requestUri);
+
+	    // Definir o tipo de conteúdo
+	    ContentType contentType = output.equals("string") ? ContentType.TEXT_PLAIN : ContentType.APPLICATION_JSON;
+
+	    if (!method.equals("GET")) {
+	        crb.setEntity(new StringEntity(content, contentType));
+	    }
+
+	    return crb.build();
 	}
 
 	@Override
 	public void stop() {
 		log.info("parou aqui");
+		
 	}
 
 }

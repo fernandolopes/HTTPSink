@@ -84,6 +84,12 @@ Projeto para iniciar testes de customizar um conector.
 		<version>5.2.4</version>
 	</dependency>
 	<dependency>
+	    <groupId>org.json</groupId>
+	    <artifactId>json</artifactId>
+	    <version>20240303</version>
+	</dependency>
+
+	<dependency>
 	    <groupId>junit</groupId>
 	    <artifactId>junit</artifactId>
 	    <version>4.13.2</version>

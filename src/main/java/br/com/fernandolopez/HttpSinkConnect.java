@@ -3,7 +3,6 @@ package br.com.fernandolopez;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.connect.connector.Task;

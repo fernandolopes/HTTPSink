@@ -27,8 +27,8 @@ public class HttpSinkTaskTest {
 	    props = new HashMap<String, String>();
 		
 	    props.put("pmenos.component.https.soTimeout", "30 seconds");
-		props.put("pmenos.sink.url", "api-container.apps.ocp-stg.pmenos.com.br");
-		props.put("pmenos.sink.path.httpUri", "/recorder");
+		props.put("pmenos.sink.url", "viacep.com.br");
+		props.put("pmenos.sink.path.httpUri", "/ws/${id}/json/");
 		props.put("bootstrap.servers", "localhost:9092");
 		props.put("key.converter", "org.apache.kafka.connect.storage.StringConverter");
 		props.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
@@ -38,7 +38,7 @@ public class HttpSinkTaskTest {
 		props.put("tasks.max", "1");
 		props.put("topics", "my-topic");
 		props.put("group.id", "connect-cluster-sink");
-		props.put("pmenos.sink.endpoint.httpMethod", "POST");
+		props.put("pmenos.sink.endpoint.httpMethod", "GET");
 		props.put("internal.value.converter.schemas.enable", "false");
 		
 		var list = new ArrayList<Map<String, String>>();
@@ -74,17 +74,20 @@ public class HttpSinkTaskTest {
 		
 		final HttpSinkTask task = new HttpSinkTask();
 		task.start(props);
+		Object obj = new Object();
 		
-		var record = new SinkRecord("my-topic", 0, Schema.STRING_SCHEMA, "key", Schema.BOOLEAN_SCHEMA, "{\"id\": 1, \"name\": \"Fernando\"}", 0L,
-                0L, TimestampType.CREATE_TIME, null, "my-topic", 0, 0L);
+		var record = new SinkRecord("json", 0, Schema.STRING_SCHEMA, "60864240", Schema.BOOLEAN_SCHEMA, "{\"userId\": 1, \"name\": \"Fernando\", \"id\": \"60335000\"}", 0L,
+                0L, TimestampType.CREATE_TIME, null, "json", 0, 0L);
 		
 		var records = new ArrayList<SinkRecord>();
 		records.add(record);
 		records.add(record);
 		records.add(record);
 		records.add(record);
+		records.add(record);
 		
 		task.put(records);
+		//task.stop();
 	}
 
 }
