@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="br.com.fernandolopez.test.HttpSinkTaskTest" time="1.376" tests="2" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="br.com.fernandolopez.test.HttpSinkTaskTest" time="1.017" tests="2" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="17"/>
     <property name="sun.jnu.encoding" value="UTF-8"/>
-    <property name="java.class.path" value="/Users/fernando/eclipse-workspace-new/HTTPSink/target/test-classes:/Users/fernando/eclipse-workspace-new/HTTPSink/target/classes:/Users/fernando/.m2/repository/org/apache/kafka/connect-api/3.7.0/connect-api-3.7.0.jar:/Users/fernando/.m2/repository/org/apache/kafka/kafka-clients/3.7.0/kafka-clients-3.7.0.jar:/Users/fernando/.m2/repository/com/github/luben/zstd-jni/1.5.5-6/zstd-jni-1.5.5-6.jar:/Users/fernando/.m2/repository/org/lz4/lz4-java/1.8.0/lz4-java-1.8.0.jar:/Users/fernando/.m2/repository/org/xerial/snappy/snappy-java/1.1.10.5/snappy-java-1.1.10.5.jar:/Users/fernando/.m2/repository/javax/ws/rs/javax.ws.rs-api/2.1.1/javax.ws.rs-api-2.1.1.jar:/Users/fernando/.m2/repository/org/apache/kafka/connect-transforms/3.7.0/connect-transforms-3.7.0.jar:/Users/fernando/.m2/repository/org/slf4j/slf4j-api/2.0.12/slf4j-api-2.0.12.jar:/Users/fernando/.m2/repository/org/slf4j/slf4j-simple/2.0.12/slf4j-simple-2.0.12.jar:/Users/fernando/.m2/repository/org/apache/httpcomponents/core5/httpcore5-h2/5.2.4/httpcore5-h2-5.2.4.jar:/Users/fernando/.m2/repository/org/apache/httpcomponents/core5/httpcore5/5.2.4/httpcore5-5.2.4.jar:/Users/fernando/.m2/repository/org/json/json/20240303/json-20240303.jar:/Users/fernando/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/Users/fernando/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/Users/fernando/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.10.2/junit-jupiter-api-5.10.2.jar:/Users/fernando/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/Users/fernando/.m2/repository/org/junit/platform/junit-platform-commons/1.10.2/junit-platform-commons-1.10.2.jar:/Users/fernando/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:"/>
+    <property name="java.class.path" value="/Users/fernando/eclipse-workspace-new/HTTPSink/target/test-classes:/Users/fernando/eclipse-workspace-new/HTTPSink/target/classes:/Users/fernando/.m2/repository/org/apache/kafka/connect-api/3.7.0/connect-api-3.7.0.jar:/Users/fernando/.m2/repository/org/apache/kafka/kafka-clients/3.7.0/kafka-clients-3.7.0.jar:/Users/fernando/.m2/repository/com/github/luben/zstd-jni/1.5.5-6/zstd-jni-1.5.5-6.jar:/Users/fernando/.m2/repository/org/lz4/lz4-java/1.8.0/lz4-java-1.8.0.jar:/Users/fernando/.m2/repository/org/xerial/snappy/snappy-java/1.1.10.5/snappy-java-1.1.10.5.jar:/Users/fernando/.m2/repository/javax/ws/rs/javax.ws.rs-api/2.1.1/javax.ws.rs-api-2.1.1.jar:/Users/fernando/.m2/repository/org/apache/kafka/connect-transforms/3.7.0/connect-transforms-3.7.0.jar:/Users/fernando/.m2/repository/org/slf4j/slf4j-api/2.0.12/slf4j-api-2.0.12.jar:/Users/fernando/.m2/repository/org/slf4j/slf4j-simple/2.0.12/slf4j-simple-2.0.12.jar:/Users/fernando/.m2/repository/org/apache/httpcomponents/core5/httpcore5-h2/5.2.4/httpcore5-h2-5.2.4.jar:/Users/fernando/.m2/repository/org/apache/httpcomponents/core5/httpcore5/5.2.4/httpcore5-5.2.4.jar:/Users/fernando/.m2/repository/org/json/json/20240303/json-20240303.jar:/Users/fernando/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.17.0/jackson-databind-2.17.0.jar:/Users/fernando/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.17.0/jackson-annotations-2.17.0.jar:/Users/fernando/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.17.0/jackson-core-2.17.0.jar:/Users/fernando/.m2/repository/net/bytebuddy/byte-buddy/1.14.9/byte-buddy-1.14.9.jar:/Users/fernando/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/Users/fernando/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/Users/fernando/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.10.2/junit-jupiter-api-5.10.2.jar:/Users/fernando/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/Users/fernando/.m2/repository/org/junit/platform/junit-platform-commons/1.10.2/junit-platform-commons-1.10.2.jar:/Users/fernando/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:"/>
     <property name="java.vm.vendor" value="Eclipse Adoptium"/>
     <property name="sun.arch.data.model" value="64"/>
     <property name="java.vendor.url" value="https://adoptium.net/"/>
@@ -12,10 +12,10 @@
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="BR"/>
     <property name="sun.boot.library.path" value="/Users/fernando/.p2/pool/plugins/org.eclipse.justj.openjdk.hotspot.jre.full.macosx.x86_64_17.0.10.v20240120-1143/jre/lib"/>
-    <property name="sun.java.command" value="/Users/fernando/eclipse-workspace-new/HTTPSink/target/surefire/surefirebooter-20240325155747301_3.jar /Users/fernando/eclipse-workspace-new/HTTPSink/target/surefire 2024-03-25T15-57-47_151-jvmRun1 surefire-20240325155747301_1tmp surefire_0-20240325155747301_2tmp"/>
+    <property name="sun.java.command" value="/Users/fernando/eclipse-workspace-new/HTTPSink/target/surefire/surefirebooter-20240325234156621_3.jar /Users/fernando/eclipse-workspace-new/HTTPSink/target/surefire 2024-03-25T23-41-56_471-jvmRun1 surefire-20240325234156621_1tmp surefire_0-20240325234156621_2tmp"/>
     <property name="http.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
     <property name="jdk.debug" value="release"/>
-    <property name="surefire.test.class.path" value="/Users/fernando/eclipse-workspace-new/HTTPSink/target/test-classes:/Users/fernando/eclipse-workspace-new/HTTPSink/target/classes:/Users/fernando/.m2/repository/org/apache/kafka/connect-api/3.7.0/connect-api-3.7.0.jar:/Users/fernando/.m2/repository/org/apache/kafka/kafka-clients/3.7.0/kafka-clients-3.7.0.jar:/Users/fernando/.m2/repository/com/github/luben/zstd-jni/1.5.5-6/zstd-jni-1.5.5-6.jar:/Users/fernando/.m2/repository/org/lz4/lz4-java/1.8.0/lz4-java-1.8.0.jar:/Users/fernando/.m2/repository/org/xerial/snappy/snappy-java/1.1.10.5/snappy-java-1.1.10.5.jar:/Users/fernando/.m2/repository/javax/ws/rs/javax.ws.rs-api/2.1.1/javax.ws.rs-api-2.1.1.jar:/Users/fernando/.m2/repository/org/apache/kafka/connect-transforms/3.7.0/connect-transforms-3.7.0.jar:/Users/fernando/.m2/repository/org/slf4j/slf4j-api/2.0.12/slf4j-api-2.0.12.jar:/Users/fernando/.m2/repository/org/slf4j/slf4j-simple/2.0.12/slf4j-simple-2.0.12.jar:/Users/fernando/.m2/repository/org/apache/httpcomponents/core5/httpcore5-h2/5.2.4/httpcore5-h2-5.2.4.jar:/Users/fernando/.m2/repository/org/apache/httpcomponents/core5/httpcore5/5.2.4/httpcore5-5.2.4.jar:/Users/fernando/.m2/repository/org/json/json/20240303/json-20240303.jar:/Users/fernando/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/Users/fernando/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/Users/fernando/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.10.2/junit-jupiter-api-5.10.2.jar:/Users/fernando/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/Users/fernando/.m2/repository/org/junit/platform/junit-platform-commons/1.10.2/junit-platform-commons-1.10.2.jar:/Users/fernando/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:"/>
+    <property name="surefire.test.class.path" value="/Users/fernando/eclipse-workspace-new/HTTPSink/target/test-classes:/Users/fernando/eclipse-workspace-new/HTTPSink/target/classes:/Users/fernando/.m2/repository/org/apache/kafka/connect-api/3.7.0/connect-api-3.7.0.jar:/Users/fernando/.m2/repository/org/apache/kafka/kafka-clients/3.7.0/kafka-clients-3.7.0.jar:/Users/fernando/.m2/repository/com/github/luben/zstd-jni/1.5.5-6/zstd-jni-1.5.5-6.jar:/Users/fernando/.m2/repository/org/lz4/lz4-java/1.8.0/lz4-java-1.8.0.jar:/Users/fernando/.m2/repository/org/xerial/snappy/snappy-java/1.1.10.5/snappy-java-1.1.10.5.jar:/Users/fernando/.m2/repository/javax/ws/rs/javax.ws.rs-api/2.1.1/javax.ws.rs-api-2.1.1.jar:/Users/fernando/.m2/repository/org/apache/kafka/connect-transforms/3.7.0/connect-transforms-3.7.0.jar:/Users/fernando/.m2/repository/org/slf4j/slf4j-api/2.0.12/slf4j-api-2.0.12.jar:/Users/fernando/.m2/repository/org/slf4j/slf4j-simple/2.0.12/slf4j-simple-2.0.12.jar:/Users/fernando/.m2/repository/org/apache/httpcomponents/core5/httpcore5-h2/5.2.4/httpcore5-h2-5.2.4.jar:/Users/fernando/.m2/repository/org/apache/httpcomponents/core5/httpcore5/5.2.4/httpcore5-5.2.4.jar:/Users/fernando/.m2/repository/org/json/json/20240303/json-20240303.jar:/Users/fernando/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.17.0/jackson-databind-2.17.0.jar:/Users/fernando/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.17.0/jackson-annotations-2.17.0.jar:/Users/fernando/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.17.0/jackson-core-2.17.0.jar:/Users/fernando/.m2/repository/net/bytebuddy/byte-buddy/1.14.9/byte-buddy-1.14.9.jar:/Users/fernando/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/Users/fernando/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/Users/fernando/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.10.2/junit-jupiter-api-5.10.2.jar:/Users/fernando/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/Users/fernando/.m2/repository/org/junit/platform/junit-platform-commons/1.10.2/junit-platform-commons-1.10.2.jar:/Users/fernando/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:"/>
     <property name="sun.cpu.endian" value="little"/>
     <property name="user.home" value="/Users/fernando"/>
     <property name="user.language" value="pt"/>
@@ -29,7 +29,7 @@
     <property name="line.separator" value="&#10;"/>
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
     <property name="java.specification.name" value="Java Platform API Specification"/>
-    <property name="surefire.real.class.path" value="/Users/fernando/eclipse-workspace-new/HTTPSink/target/surefire/surefirebooter-20240325155747301_3.jar"/>
+    <property name="surefire.real.class.path" value="/Users/fernando/eclipse-workspace-new/HTTPSink/target/surefire/surefirebooter-20240325234156621_3.jar"/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="ftp.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
     <property name="java.runtime.version" value="17.0.10+7"/>
@@ -56,139 +56,84 @@
     <property name="socksNonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
     <property name="java.class.version" value="61.0"/>
   </properties>
-  <testcase name="shouldCreateSinkTaskStart" classname="br.com.fernandolopez.test.HttpSinkTaskTest" time="1.321">
-    <system-out><![CDATA[data: class java.lang.String
-viacep.com.br/165.227.126.241:80 GET /ws/60335000/json/ HTTP/1.1
-viacep.com.br/165.227.126.241:80 HTTP/1.1 200 OK
-viacep.com.br/165.227.126.241:80 exchange completed (connection kept alive)
-data: class java.lang.String
-viacep.com.br/165.227.126.241:80 GET /ws/60335000/json/ HTTP/1.1
-viacep.com.br/165.227.126.241:80 HTTP/1.1 200 OK
-viacep.com.br/165.227.126.241:80 exchange completed (connection kept alive)
-data: class java.lang.String
-viacep.com.br/165.227.126.241:80 GET /ws/60335000/json/ HTTP/1.1
-viacep.com.br/165.227.126.241:80 HTTP/1.1 200 OK
-viacep.com.br/165.227.126.241:80 exchange completed (connection kept alive)
-data: class java.lang.String
-viacep.com.br/165.227.126.241:80 GET /ws/60335000/json/ HTTP/1.1
-viacep.com.br/165.227.126.241:80 HTTP/1.1 200 OK
-viacep.com.br/165.227.126.241:80 exchange completed (connection kept alive)
-data: class java.lang.String
-viacep.com.br/165.227.126.241:80 GET /ws/60335000/json/ HTTP/1.1
-viacep.com.br/165.227.126.241:80 HTTP/1.1 200 OK
-viacep.com.br/165.227.126.241:80 exchange completed (connection kept alive)
-]]></system-out>
+  <testcase name="shouldCreateSinkTaskStart" classname="br.com.fernandolopez.test.HttpSinkTaskTest" time="0.958">
     <system-err><![CDATA[[main] INFO br.com.fernandolopez.HttpSinkConnect - My Connector config keys:         tasks.max = 1
         topics = my-topic
         group.id = connect-cluster-sink
-        pmenos.sink.endpoint.httpMethod = GET
-        pmenos.component.https.soTimeout = 30 seconds
         bootstrap.servers = localhost:9092
         plugin.path = /home/connectors
-        pmenos.sink.path.httpUri = /ws/${id}/json/
+        component.https.soTimeout = 30 seconds
         offset.flush.interval.ms = 10000
-        output.data.format = json
-        pmenos.sink.url = viacep.com.br
+        output.data.format = string
+        sink.url = api-container.apps.ocp-stg.pmenos.com.br
+        sink.path.httpUri = /recorder
+        sink.endpoint.copyHeaders = true
         internal.value.converter.schemas.enable = false
         value.converter = org.apache.kafka.connect.json.JsonConverter
-        key.converter = org.apache.kafka.connect.storage.StringConverter
+        sink.endpoint.httpMethod = POST
+        key.converter = org.apache.kafka.connect.json.JsonConverter
 
 [main] INFO br.com.fernandolopez.HttpSinkConnect - Definir configuracoes de task para 1 workers.
 [main] INFO br.com.fernandolopez.HttpSinkTask - comecou aqui
 [main] INFO org.apache.kafka.common.config.AbstractConfig - AbstractConfig values: 
-	output.data.format = json
-	pmenos.component.https.soTimeout = 30 seconds
-	pmenos.map.headers = true
-	pmenos.sink.endpoint.bridgeEndpoint = false
-	pmenos.sink.endpoint.copyHeaders = true
-	pmenos.sink.endpoint.customHostHeader = null
-	pmenos.sink.endpoint.disableStreamCache = false
-	pmenos.sink.endpoint.headerFilterStrategy = null
-	pmenos.sink.endpoint.httpMethod = GET
-	pmenos.sink.path.httpUri = /ws/${id}/json/
-	pmenos.sink.url = viacep.com.br
+	component.https.soTimeout = 30 seconds
+	map.headers = true
+	output.data.format = string
+	sink.endpoint.bridgeEndpoint = false
+	sink.endpoint.copyHeaders = true
+	sink.endpoint.customHostHeader = null
+	sink.endpoint.disableStreamCache = false
+	sink.endpoint.headerFilterStrategy = null
+	sink.endpoint.httpMethod = POST
+	sink.path.httpUri = /recorder
+	sink.url = api-container.apps.ocp-stg.pmenos.com.br
 	topics = my-topic
 
 [main] INFO br.com.fernandolopez.HttpSinkTask - Timeout: 30 seconds
-[main] INFO br.com.fernandolopez.HttpSinkTask - Method: GET
-[main] INFO br.com.fernandolopez.HttpSinkTask - URL Base: viacep.com.br
-[main] INFO br.com.fernandolopez.HttpSinkTask - rest: /ws/${id}/json/
+[main] INFO br.com.fernandolopez.HttpSinkTask - Method: POST
+[main] INFO br.com.fernandolopez.HttpSinkTask - URL Base: api-container.apps.ocp-stg.pmenos.com.br
+[main] INFO br.com.fernandolopez.HttpSinkTask - rest: /recorder
 [main] INFO br.com.fernandolopez.HttpSinkTask - {"userId": 1, "name": "Fernando", "id": "60335000"}
-[main] INFO br.com.fernandolopez.HttpSinkTask - /ws/60335000/json/->200
-[main] INFO br.com.fernandolopez.HttpSinkTask - {
-  "cep": "60335-000",
-  "logradouro": "Avenida Pasteur",
-  "complemento": "de 600 ao fim - lado par",
-  "bairro": "Álvaro Weyne",
-  "localidade": "Fortaleza",
-  "uf": "CE",
-  "ibge": "2304400",
-  "gia": "",
-  "ddd": "85",
-  "siafi": "1389"
-}
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 POST /recorder HTTP/1.1
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 HTTP/1.1 100 Continue
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 HTTP/1.1 200 OK
+[main] INFO br.com.fernandolopez.HttpSinkTask - /recorder->200
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 exchange completed (connection kept alive)
+[main] INFO br.com.fernandolopez.HttpSinkTask - {"userId": 1, "name": "Fernando", "id": "60335000"}
 [main] INFO br.com.fernandolopez.HttpSinkTask - ==============
 [main] INFO br.com.fernandolopez.HttpSinkTask - {"userId": 1, "name": "Fernando", "id": "60335000"}
-[main] INFO br.com.fernandolopez.HttpSinkTask - /ws/60335000/json/->200
-[main] INFO br.com.fernandolopez.HttpSinkTask - {
-  "cep": "60335-000",
-  "logradouro": "Avenida Pasteur",
-  "complemento": "de 600 ao fim - lado par",
-  "bairro": "Álvaro Weyne",
-  "localidade": "Fortaleza",
-  "uf": "CE",
-  "ibge": "2304400",
-  "gia": "",
-  "ddd": "85",
-  "siafi": "1389"
-}
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 POST /recorder HTTP/1.1
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 HTTP/1.1 100 Continue
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 HTTP/1.1 200 OK
+[main] INFO br.com.fernandolopez.HttpSinkTask - /recorder->200
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 exchange completed (connection kept alive)
+[main] INFO br.com.fernandolopez.HttpSinkTask - {"userId": 1, "name": "Fernando", "id": "60335000"}
 [main] INFO br.com.fernandolopez.HttpSinkTask - ==============
 [main] INFO br.com.fernandolopez.HttpSinkTask - {"userId": 1, "name": "Fernando", "id": "60335000"}
-[main] INFO br.com.fernandolopez.HttpSinkTask - /ws/60335000/json/->200
-[main] INFO br.com.fernandolopez.HttpSinkTask - {
-  "cep": "60335-000",
-  "logradouro": "Avenida Pasteur",
-  "complemento": "de 600 ao fim - lado par",
-  "bairro": "Álvaro Weyne",
-  "localidade": "Fortaleza",
-  "uf": "CE",
-  "ibge": "2304400",
-  "gia": "",
-  "ddd": "85",
-  "siafi": "1389"
-}
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 POST /recorder HTTP/1.1
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 HTTP/1.1 100 Continue
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 HTTP/1.1 200 OK
+[main] INFO br.com.fernandolopez.HttpSinkTask - /recorder->200
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 exchange completed (connection kept alive)
+[main] INFO br.com.fernandolopez.HttpSinkTask - {"userId": 1, "name": "Fernando", "id": "60335000"}
 [main] INFO br.com.fernandolopez.HttpSinkTask - ==============
 [main] INFO br.com.fernandolopez.HttpSinkTask - {"userId": 1, "name": "Fernando", "id": "60335000"}
-[main] INFO br.com.fernandolopez.HttpSinkTask - /ws/60335000/json/->200
-[main] INFO br.com.fernandolopez.HttpSinkTask - {
-  "cep": "60335-000",
-  "logradouro": "Avenida Pasteur",
-  "complemento": "de 600 ao fim - lado par",
-  "bairro": "Álvaro Weyne",
-  "localidade": "Fortaleza",
-  "uf": "CE",
-  "ibge": "2304400",
-  "gia": "",
-  "ddd": "85",
-  "siafi": "1389"
-}
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 POST /recorder HTTP/1.1
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 HTTP/1.1 100 Continue
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 HTTP/1.1 200 OK
+[main] INFO br.com.fernandolopez.HttpSinkTask - /recorder->200
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 exchange completed (connection kept alive)
+[main] INFO br.com.fernandolopez.HttpSinkTask - {"userId": 1, "name": "Fernando", "id": "60335000"}
 [main] INFO br.com.fernandolopez.HttpSinkTask - ==============
 [main] INFO br.com.fernandolopez.HttpSinkTask - {"userId": 1, "name": "Fernando", "id": "60335000"}
-[main] INFO br.com.fernandolopez.HttpSinkTask - /ws/60335000/json/->200
-[main] INFO br.com.fernandolopez.HttpSinkTask - {
-  "cep": "60335-000",
-  "logradouro": "Avenida Pasteur",
-  "complemento": "de 600 ao fim - lado par",
-  "bairro": "Álvaro Weyne",
-  "localidade": "Fortaleza",
-  "uf": "CE",
-  "ibge": "2304400",
-  "gia": "",
-  "ddd": "85",
-  "siafi": "1389"
-}
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 POST /recorder HTTP/1.1
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 HTTP/1.1 100 Continue
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 HTTP/1.1 200 OK
+[main] INFO br.com.fernandolopez.HttpSinkTask - /recorder->200
+[main] INFO br.com.fernandolopez.HttpSinkTask - api-container.apps.ocp-stg.pmenos.com.br/10.51.5.160:80 exchange completed (connection kept alive)
+[main] INFO br.com.fernandolopez.HttpSinkTask - {"userId": 1, "name": "Fernando", "id": "60335000"}
 [main] INFO br.com.fernandolopez.HttpSinkTask - ==============
 ]]></system-err>
   </testcase>
-  <testcase name="shouldCreateSinkTask" classname="br.com.fernandolopez.test.HttpSinkTaskTest" time="0.007"/>
+  <testcase name="shouldCreateSinkTask" classname="br.com.fernandolopez.test.HttpSinkTaskTest" time="0.008"/>
 </testsuite>

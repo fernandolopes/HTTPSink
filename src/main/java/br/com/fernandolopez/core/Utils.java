@@ -1,11 +1,15 @@
 package br.com.fernandolopez.core;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import org.apache.hc.core5.util.Timeout;
 import org.json.JSONObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Utils {
 
@@ -40,37 +44,6 @@ public class Utils {
 		return time;
 	}
 	
-//	public static String replaceRequestUri(String uri, String key, String topics, String output, Object record) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-//		
-//		var uriA = uri.replaceAll("(\\$\\{topic\\})", topics);
-//		var uriB = (key != null)? uriA.replaceAll("(\\$\\{key\\})", key) : uriA;
-//		
-//		System.out.println("data: " + record.getClass());
-//		if (output.equals("json")) {
-//			Pattern pattern = Pattern.compile("(\\$\\{[a-zA-Z]+\\})", Pattern.CASE_INSENSITIVE);
-//		    Matcher matcher = pattern.matcher(uriB);
-//		    boolean matchFound = matcher.find();
-//		    
-//		    if(matchFound) {
-//		    	var keySearch = matcher.group(1).replace("${", "").replace("}", "");
-//		    	String value = null;
-//		    	if (record.getClass().toString().equals("class java.lang.String")) {
-//			    	var json = new JSONObject(record.toString());
-//			    	value = json.getString(keySearch);
-//		    	} else {
-//		    		var json = (HashMap<?, ?>)record;
-//		    		value = json.get(keySearch).toString();
-//	    		    
-//		    	}
-//		    	return uriA.replaceAll("(\\$\\{"+keySearch+"\\})", value);
-//		    }
-//			
-//		}
-//		
-//		
-//		return uriB;
-//	}
-	
 	public static String replaceRequestUri(String uri, String key, String topics, String output, Object record) throws Exception {
 	    // Substituir ${topic} com o valor de topics
 	    String uriWithTopics = uri.replaceAll("\\$\\{topic\\}", topics);
@@ -97,10 +70,23 @@ public class Utils {
 	    return uriWithTopics;
 	}
 	
+	public static InputStream convertToInputStream(HashMap<String, Object> map) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            String jsonString = mapper.writeValueAsString(map);
+            
+            return new ByteArrayInputStream(jsonString.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+	
 	// Método para extrair o valor do registro (record) baseado na chave (key)
 	private static String extractValueFromRecord(Object record, String key) {
 	    if (record instanceof String) {
 	        JSONObject json = new JSONObject((String) record);
+	        
 	        return json.optString(key);
 	    } else if (record instanceof HashMap) {
 	        @SuppressWarnings("unchecked")

@@ -8,8 +8,10 @@ import java.util.Map;
 
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkConnectorContext;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.apache.kafka.connect.transforms.InsertHeader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,20 +28,22 @@ public class HttpSinkTaskTest {
 	    connect = new HttpSinkConnect();
 	    props = new HashMap<String, String>();
 		
-	    props.put("pmenos.component.https.soTimeout", "30 seconds");
-		props.put("pmenos.sink.url", "viacep.com.br");
-		props.put("pmenos.sink.path.httpUri", "/ws/${id}/json/");
+	    props.put("component.https.soTimeout", "30 seconds");
+		props.put("sink.url", "api-container.apps.ocp-stg.pmenos.com.br");
+		props.put("sink.path.httpUri", "/recorder");
 		props.put("bootstrap.servers", "localhost:9092");
-		props.put("key.converter", "org.apache.kafka.connect.storage.StringConverter");
+//		props.put("key.converter", "org.apache.kafka.connect.storage.StringConverter");
+		props.put("key.converter", "org.apache.kafka.connect.json.JsonConverter");
 		props.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
 		props.put("offset.flush.interval.ms", "10000");
 		props.put("plugin.path", "/home/connectors");
-		props.put("output.data.format", "json");
+		props.put("output.data.format", "string");
 		props.put("tasks.max", "1");
 		props.put("topics", "my-topic");
 		props.put("group.id", "connect-cluster-sink");
-		props.put("pmenos.sink.endpoint.httpMethod", "GET");
+		props.put("sink.endpoint.httpMethod", "POST");
 		props.put("internal.value.converter.schemas.enable", "false");
+		props.put("sink.endpoint.copyHeaders","true");
 		
 		var list = new ArrayList<Map<String, String>>();
 		list.add(props);
@@ -76,8 +80,30 @@ public class HttpSinkTaskTest {
 		task.start(props);
 		Object obj = new Object();
 		
-		var record = new SinkRecord("json", 0, Schema.STRING_SCHEMA, "60864240", Schema.BOOLEAN_SCHEMA, "{\"userId\": 1, \"name\": \"Fernando\", \"id\": \"60335000\"}", 0L,
-                0L, TimestampType.CREATE_TIME, null, "json", 0, 0L);
+		ConnectHeaders headers = new ConnectHeaders();
+		headers.addString("x-api-version", "v2");
+		
+		HashMap<String, Object> map = new HashMap<String, Object>();
+		map.put("userId", 1);
+		map.put("name", "Fernando");
+		map.put("age", 45);
+		
+		var content = "{\"userId\": 1, \"name\": \"Fernando\", \"id\": \"60335000\"}";
+		
+		var record = new SinkRecord(
+				"my-topic", 
+				0, 
+				Schema.STRING_SCHEMA, 
+				"60864240", 
+				Schema.BOOLEAN_SCHEMA, 
+				content, 
+				0L,
+                0L, 
+                TimestampType.CREATE_TIME, 
+                headers, 
+                "my-topic", 
+                0, 
+                0L);
 		
 		var records = new ArrayList<SinkRecord>();
 		records.add(record);
