@@ -1,4 +1,4 @@
-package br.com.fernandolopez;
+package io.github.fernandolopes;
 
 import java.util.ArrayList;
 import java.util.List;

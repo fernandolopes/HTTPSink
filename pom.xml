@@ -4,33 +4,177 @@ Projeto para iniciar testes de customizar um conector.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>br.com.fernandolopez</groupId>
+  <groupId>io.github.fernandolopes</groupId>
   <artifactId>HTTPSink</artifactId>
   <version>0.0.1</version>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Projeto base para um connector kafka http sink</description>
   <url>https://github.com/fernandolopes/HTTPSink</url>
   
+  <properties>
+	<java.version>11</java.version>
+	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
+    <maven.compiler.release>${java.version}</maven.compiler.release>
+    <maven-scm-provider-gitexe.version>1.11.2</maven-scm-provider-gitexe.version>
+    <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
+    <maven-source-plugin.version>2.2.1</maven-source-plugin.version>
+  </properties>
+  
+  <!--<profiles>
+	  <profile>
+		  <id>release-sign-artifacts</id>
+		  <activation>
+			  <property>
+				  <name>gpg.passphrase</name>
+			  </property>
+		  </activation>
+		  <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.2</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <keyname>0xDCBD4338</keyname>
+  									<passphraseServerId>0xDCBD4338</passphraseServerId>
+                                    <gpgArguments>
+                                        <arg>pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+	  </profile>
+	  <profile>
+            <id>release</id>
+            <activation>
+                <jdk>[1.6,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-javadoc</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+  </profiles>-->
+  
+  <distributionManagement>
+    <repository>
+        <uniqueVersion>false</uniqueVersion>
+        <id>central</id>
+        <name>Corporate Repository</name>
+        <url>file://C:/Users/113871/.m2</url>
+        <layout>default</layout>
+    </repository>
+</distributionManagement>
+
   <build>
     <plugins>
 		<plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
-        </configuration>
-      </plugin>
-	</plugins>
-  </build>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>2.9.1</version>
+            <executions>
+                <execution>
+                    <id>attach-javadocs</id>
+                    <goals>
+                        <goal>jar</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>2.2.1</version>
+            <executions>
+                <execution>
+                    <id>attach-sources</id>
+                    <goals>
+                        <goal>jar</goal>
+                        <goal>test-jar</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+		<plugin>
+		  <groupId>org.apache.maven.plugins</groupId>
+		  <artifactId>maven-gpg-plugin</artifactId>
+		  <version>1.5</version>
+		  <executions>
+		    <execution>
+		      <id>sign-artifacts</id>
+		      <phase>verify</phase>
+		      <goals>
+		        <goal>sign</goal>
+		      </goals>
+		    </execution>
+		  </executions>
+	    </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-release-plugin</artifactId>
+            <version>${maven-release-plugin.version}</version>
+            <configuration>
+                <localCheckout>true</localCheckout>
+                <pushChanges>false</pushChanges>
+                <mavenExecutorId>forked-path</mavenExecutorId>
+            </configuration>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.maven.scm</groupId>
+                    <artifactId>maven-scm-provider-gitexe</artifactId>
+                    <version>${maven-scm-provider-gitexe.version}</version>
+                </dependency>
+            </dependencies>
+        </plugin>
+        <plugin>
+          <groupId>org.sonatype.central</groupId>
+          <artifactId>central-publishing-maven-plugin</artifactId>
+          <version>0.4.0</version>
+          <extensions>true</extensions>
+          <configuration>
+            <publishingServerId>central</publishingServerId>
+            <tokenAuth>true</tokenAuth>
+            <autoPublish>true</autoPublish>
+            <!--<ignorePublishedComponents>true</ignorePublishedComponents>-->
+          </configuration>
+        </plugin>
+    </plugins>
+</build>
   
   <developers>
     <developer>

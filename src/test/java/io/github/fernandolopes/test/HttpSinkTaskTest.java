@@ -1,4 +1,4 @@
-package br.com.fernandolopez.test;
+package io.github.fernandolopes.test;
 
 import static org.junit.Assert.assertEquals;
 
@@ -15,8 +15,8 @@ import org.apache.kafka.connect.transforms.InsertHeader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import br.com.fernandolopez.HttpSinkConnect;
-import br.com.fernandolopez.HttpSinkTask;
+import io.github.fernandolopes.HttpSinkConnect;
+import io.github.fernandolopes.HttpSinkTask;
 
 public class HttpSinkTaskTest {
 	

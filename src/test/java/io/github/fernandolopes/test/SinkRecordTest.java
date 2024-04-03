@@ -1,4 +1,4 @@
-package br.com.fernandolopez.test;
+package io.github.fernandolopes.test;
 
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.sink.SinkRecord;

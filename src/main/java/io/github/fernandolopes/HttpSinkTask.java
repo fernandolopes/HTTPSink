@@ -1,4 +1,4 @@
-package br.com.fernandolopez;
+package io.github.fernandolopes;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -34,7 +34,7 @@ import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import br.com.fernandolopez.core.Utils;
+import io.github.fernandolopes.core.Utils;
 
 
 public class HttpSinkTask extends SinkTask {

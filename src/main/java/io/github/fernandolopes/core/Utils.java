@@ -1,4 +1,4 @@
-package br.com.fernandolopez.core;
+package io.github.fernandolopes.core;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

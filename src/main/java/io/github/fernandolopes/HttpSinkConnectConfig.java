@@ -1,4 +1,4 @@
-package br.com.fernandolopez;
+package io.github.fernandolopes;
 
 import java.util.Map;
 import org.apache.kafka.common.config.AbstractConfig;
