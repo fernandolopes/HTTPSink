@@ -33,6 +33,7 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
 
 import io.github.fernandolopes.core.Utils;
 
@@ -108,7 +109,8 @@ public class HttpSinkTask extends SinkTask {
 	                    @Override
 	                    public void onRequestHead(final HttpConnection connection, final HttpRequest request) {
 	                        log.info(connection.getRemoteAddress() + " " + new RequestLine(request));
-
+	                        
+	                        log.trace(Marker.ANY_MARKER, request.toString());
 	                    }
 
 	                    @Override

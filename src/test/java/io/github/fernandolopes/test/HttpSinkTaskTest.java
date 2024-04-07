@@ -29,8 +29,8 @@ public class HttpSinkTaskTest {
 	    props = new HashMap<String, String>();
 		
 	    props.put("component.https.soTimeout", "30 seconds");
-		props.put("sink.url", "api-container.apps.ocp-stg.pmenos.com.br");
-		props.put("sink.path.httpUri", "/recorder");
+		props.put("sink.url", "viacep.com.br");
+		props.put("sink.path.httpUri", "/ws/${key}/json/");
 		props.put("bootstrap.servers", "localhost:9092");
 //		props.put("key.converter", "org.apache.kafka.connect.storage.StringConverter");
 		props.put("key.converter", "org.apache.kafka.connect.json.JsonConverter");
@@ -41,7 +41,7 @@ public class HttpSinkTaskTest {
 		props.put("tasks.max", "1");
 		props.put("topics", "my-topic");
 		props.put("group.id", "connect-cluster-sink");
-		props.put("sink.endpoint.httpMethod", "POST");
+		props.put("sink.endpoint.httpMethod", "GET");
 		props.put("internal.value.converter.schemas.enable", "false");
 		props.put("sink.endpoint.copyHeaders","true");
 		
@@ -94,7 +94,7 @@ public class HttpSinkTaskTest {
 				"my-topic", 
 				0, 
 				Schema.STRING_SCHEMA, 
-				"60864240", 
+				"\"60864240\"", 
 				Schema.BOOLEAN_SCHEMA, 
 				content, 
 				0L,

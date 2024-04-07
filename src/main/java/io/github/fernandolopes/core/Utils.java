@@ -50,7 +50,7 @@ public class Utils {
 	    
 	    // Substituir ${key} com o valor de key, se key não for nulo
 	    if (key != null) {
-	        uriWithTopics = uriWithTopics.replaceAll("\\$\\{key\\}", key);
+	        uriWithTopics = uriWithTopics.replaceAll("\\$\\{key\\}", key.replace("\"", ""));
 	    }
 	    
 	    // Verificar se o output é "json" e se existem placeholders a serem substituídos
