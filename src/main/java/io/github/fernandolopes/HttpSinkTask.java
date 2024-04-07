@@ -36,6 +36,10 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 
 import io.github.fernandolopes.core.Utils;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
 
 
 public class HttpSinkTask extends SinkTask {
@@ -49,6 +53,7 @@ public class HttpSinkTask extends SinkTask {
 	private Timeout timeout;
 	private String topics;
 	private boolean copyHeaders = true;
+	private final Tracer tracer = GlobalOpenTelemetry.getTracer("kafka-http-sink-connect");
 	
 	@Override
 	public String version() {
@@ -58,6 +63,8 @@ public class HttpSinkTask extends SinkTask {
 	@Override
 	public void start(Map<String, String> props) {
 		log.info("comecou aqui");
+		
+		
 		
 		AbstractConfig config = new AbstractConfig(HttpSinkConnectConfig.conf(), props);
 		
@@ -102,6 +109,8 @@ public class HttpSinkTask extends SinkTask {
 
 	@Override
 	public void put(Collection<SinkRecord> records) {
+		Span span = tracer.spanBuilder("processRecord")
+				.startSpan();
 		try {
 			httpRequester = RequesterBootstrap.bootstrap()
 	                .setStreamListener(new Http1StreamListener() {
@@ -110,7 +119,7 @@ public class HttpSinkTask extends SinkTask {
 	                    public void onRequestHead(final HttpConnection connection, final HttpRequest request) {
 	                        log.info(connection.getRemoteAddress() + " " + new RequestLine(request));
 	                        
-	                        log.trace(Marker.ANY_MARKER, request.toString());
+	                        span.setAttribute("url.full", request.toString());
 	                    }
 
 	                    @Override
@@ -134,15 +143,26 @@ public class HttpSinkTask extends SinkTask {
 	                .create();
 			
 			for(final SinkRecord record : records) {
+				
+                span.setAttribute("kafka.topic", record.topic());
+                span.setAttribute("kafka.partition", record.kafkaPartition());
+				
 				sendToHttp(record);
 			}
+			span.setStatus(StatusCode.OK, "Mensagem enviada com sucesso");
 			
 			httpRequester.close();
 		
 		} catch (Exception e) {
 			log.error(e.getMessage());
+		//	span.setAttribute("kafka.partition", record.kafkaPartition());
+			span.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem "+ e);
 			throw new RetriableException("Falha ao enviar mensagem", e);
 		}
+		finally {
+            span.end();
+        }
+
 		
 	}
 	
