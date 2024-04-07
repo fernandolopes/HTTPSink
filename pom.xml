@@ -180,6 +180,16 @@ Projeto para iniciar testes de customizar um conector.
 	    <version>5.10.2</version>
 	    <scope>test</scope>
 	</dependency>
+	<dependency>
+	    <groupId>io.opentelemetry.instrumentation</groupId>
+	    <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
+	    <version>2.2.0-alpha</version>
+	</dependency>
+	<dependency>
+	    <groupId>io.opentelemetry</groupId>
+	    <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
+	    <version>1.36.0</version>
+	</dependency>
 
   </dependencies>
 </project>
