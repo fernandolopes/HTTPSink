@@ -81,7 +81,8 @@ public class HttpSinkTaskTest {
 		Object obj = new Object();
 		
 		ConnectHeaders headers = new ConnectHeaders();
-		headers.addString("x-api-version", "v2");
+//		headers.addString("x-api-version", "v2");
+		headers.addString("traceparent", "00-4ec7d23d222cd79740c96bfb01cf22bc-5d171069cca887b9-01");
 		
 		HashMap<String, Object> map = new HashMap<String, Object>();
 		map.put("userId", 1);
@@ -107,10 +108,10 @@ public class HttpSinkTaskTest {
 		
 		var records = new ArrayList<SinkRecord>();
 		records.add(record);
-		records.add(record);
-		records.add(record);
-		records.add(record);
-		records.add(record);
+//		records.add(record);
+//		records.add(record);
+//		records.add(record);
+//		records.add(record);
 		
 		task.put(records);
 		//task.stop();

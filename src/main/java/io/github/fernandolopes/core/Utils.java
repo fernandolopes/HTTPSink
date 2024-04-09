@@ -82,6 +82,23 @@ public class Utils {
         }
     }
 	
+	public static String[] extractIds(String traceparent) {
+        // Regex pattern to match traceparent format
+        String pattern = "^(\\w{2})-(\\w{32})-(\\w{16})-(\\w{2})?$";
+        Pattern r = Pattern.compile(pattern);
+        Matcher m = r.matcher(traceparent);
+        
+        String traceId = "";
+        String spanId = "";
+
+        if (m.find()) {
+            traceId = m.group(2);
+            spanId = m.group(3);
+        }
+        
+        return new String[] { traceId, spanId };
+    }
+	
 	// Método para extrair o valor do registro (record) baseado na chave (key)
 	private static String extractValueFromRecord(Object record, String key) {
 	    if (record instanceof String) {

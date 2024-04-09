@@ -6,7 +6,7 @@ Projeto para iniciar testes de customizar um conector.
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.fernandolopes</groupId>
   <artifactId>HTTPSink</artifactId>
-  <version>0.0.5</version>
+  <version>0.0.13</version>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Projeto base para um connector kafka http sink</description>
   <url>https://github.com/fernandolopes/HTTPSink</url>
@@ -27,7 +27,7 @@ Projeto para iniciar testes de customizar um conector.
         <uniqueVersion>false</uniqueVersion>
         <id>central</id>
         <name>Corporate Repository</name>
-        <url>file://C:/Users/113871/.m2</url>
+        <url>file:///Users/fernando/.m2</url>
         <layout>default</layout>
     </repository>
   </distributionManagement>
@@ -74,6 +74,12 @@ Projeto para iniciar testes de customizar um conector.
 		      </goals>
 		    </execution>
 		  </executions>
+		  <configuration>
+                <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                </gpgArguments>
+            </configuration>
 	    </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
@@ -185,6 +191,11 @@ Projeto para iniciar testes de customizar um conector.
 	    <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
 	    <version>1.19.0-alpha</version>
 	</dependency>
+	<!--<dependency>
+	    <groupId>io.opentelemetry</groupId>
+	    <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
+	    <version>1.36.0</version>
+	</dependency>-->
 	<dependency>
 	    <groupId>io.opentelemetry</groupId>
 	    <artifactId>opentelemetry-sdk</artifactId>
@@ -195,7 +206,22 @@ Projeto para iniciar testes de customizar um conector.
 	    <artifactId>opentelemetry-exporter-otlp</artifactId>
 	    <version>1.36.0</version>
 	</dependency>
+	<!--<dependency>
+	    <groupId>io.opentelemetry</groupId>
+	    <artifactId>opentelemetry-sdk-logs</artifactId>
+	    <version>1.36.0</version>
+	</dependency>
+	<dependency>
+	    <groupId>io.opentelemetry</groupId>
+	    <artifactId>opentelemetry-sdk-trace</artifactId>
+	    <version>1.36.0</version>
+	</dependency>-->
 
+	<dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-api</artifactId>
+        <version>1.36.0</version>
+    </dependency>
 
   </dependencies>
 </project>

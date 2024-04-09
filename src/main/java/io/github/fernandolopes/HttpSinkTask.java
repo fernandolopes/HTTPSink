@@ -4,9 +4,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.charset.Charset;
-
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
@@ -29,17 +31,30 @@ import org.apache.hc.core5.http.protocol.HttpCoreContext;
 import org.apache.hc.core5.util.Timeout;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.connect.errors.RetriableException;
+import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Marker;
 
+import io.github.fernandolopes.core.TelemetryConfig;
 import io.github.fernandolopes.core.Utils;
 import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.logs.Severity;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.TraceFlags;
+import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.ContextKey;
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.context.propagation.TextMapGetter;
+import io.opentelemetry.context.propagation.TextMapPropagator;
 
 
 public class HttpSinkTask extends SinkTask {
@@ -53,7 +68,8 @@ public class HttpSinkTask extends SinkTask {
 	private Timeout timeout;
 	private String topics;
 	private boolean copyHeaders = true;
-	private final Tracer tracer = GlobalOpenTelemetry.getTracer("kafka-http-sink-connect");
+	private OpenTelemetry openTelemetry = null;
+    private Tracer tracer = null;
 	
 	@Override
 	public String version() {
@@ -109,17 +125,19 @@ public class HttpSinkTask extends SinkTask {
 
 	@Override
 	public void put(Collection<SinkRecord> records) {
-		Span span = tracer.spanBuilder("processRecord")
-				.startSpan();
+		
+		Span span = null;
+		openTelemetry = TelemetryConfig.initOpenTelemetry();
+		tracer = openTelemetry.getTracer(HttpSinkTask.class.getName(), "1.0.0");
+		
 		try {
+			
 			httpRequester = RequesterBootstrap.bootstrap()
 	                .setStreamListener(new Http1StreamListener() {
 
 	                    @Override
 	                    public void onRequestHead(final HttpConnection connection, final HttpRequest request) {
 	                        log.info(connection.getRemoteAddress() + " " + new RequestLine(request));
-	                        
-	                        span.setAttribute("url.full", request.toString());
 	                    }
 
 	                    @Override
@@ -129,6 +147,7 @@ public class HttpSinkTask extends SinkTask {
 
 	                    @Override
 	                    public void onExchangeComplete(final HttpConnection connection, final boolean keepAlive) {
+	                    	
 	                        if (keepAlive) {
 	                            log.info(connection.getRemoteAddress() + " exchange completed (connection kept alive)");
 	                        } else {
@@ -143,31 +162,48 @@ public class HttpSinkTask extends SinkTask {
 	                .create();
 			
 			for(final SinkRecord record : records) {
+//				span = TelemetryConfig.getContext(record.headers());
+				//Context parentContext = Context.current().with(mainSpan);
 				
-                span.setAttribute("kafka.topic", record.topic());
-                span.setAttribute("kafka.partition", record.kafkaPartition());
+				//try(Scope scope = span.makeCurrent()) {
+					
+					span = tracer.spanBuilder("processRecord")
+//							.setParent(parentContext)
+							.startSpan();
+					
+	                span.setAttribute("kafka.topic", record.topic());
+	                span.setAttribute("kafka.partition", record.kafkaPartition());
+	                span.setAttribute("kafka.offset", record.kafkaOffset());
+					
+					sendToHttp(record, span);
+					
+//				}
+//				finally {
+//					if (span != null)
+//						span.end();
+//		        }
 				
-				sendToHttp(record);
 			}
-			span.setStatus(StatusCode.OK, "Mensagem enviada com sucesso");
 			
 			httpRequester.close();
 		
 		} catch (Exception e) {
 			log.error(e.getMessage());
-		//	span.setAttribute("kafka.partition", record.kafkaPartition());
-			span.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem "+ e);
+			if (span != null) {
+				span.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem "+ e);
+				span.end();
+			}
 			throw new RetriableException("Falha ao enviar mensagem", e);
 		}
-		finally {
-            span.end();
-        }
 
 		
 	}
 	
 	
-	private void sendToHttp(SinkRecord record) throws Exception {
+	
+	
+	private void sendToHttp(SinkRecord record, Span parentSpan) throws Exception {
+		
 		String data = record.value().toString();
 		log.info(data);
 		
@@ -179,6 +215,18 @@ public class HttpSinkTask extends SinkTask {
             log.info(requestUri + "->" + response.getCode());
             log.info(EntityUtils.toString(response.getEntity()));
             log.info("==============");
+            Context parentContext = Context.current().with(parentSpan);
+            
+            Span reqSpan = tracer.spanBuilder(request.getScheme().toUpperCase() + " "+ request.getMethod() )
+    			.setParent(parentContext).startSpan();
+            
+            reqSpan.setAttribute("http.method", request.getMethod());
+            reqSpan.setAttribute("http.scheme", request.getScheme());
+            reqSpan.setAttribute("net.peer.name", request.getRequestUri());
+            reqSpan.setAttribute("http.url", request.getUri().toString());
+            reqSpan.setAttribute("http.status_code", response.getCode());
+            reqSpan.end();
+            parentSpan.end();
         } catch (IOException e) {
         	log.error(e.getMessage());
 			e.printStackTrace();
