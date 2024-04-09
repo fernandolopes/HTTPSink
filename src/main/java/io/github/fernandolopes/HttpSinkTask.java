@@ -80,7 +80,8 @@ public class HttpSinkTask extends SinkTask {
 	public void start(Map<String, String> props) {
 		log.info("comecou aqui");
 		
-		
+		openTelemetry = TelemetryConfig.initOpenTelemetry();
+		tracer = openTelemetry.getTracer(HttpSinkTask.class.getName(), "1.0.0");
 		
 		AbstractConfig config = new AbstractConfig(HttpSinkConnectConfig.conf(), props);
 		
@@ -127,8 +128,7 @@ public class HttpSinkTask extends SinkTask {
 	public void put(Collection<SinkRecord> records) {
 		
 		Span span = null;
-		openTelemetry = TelemetryConfig.initOpenTelemetry();
-		tracer = openTelemetry.getTracer(HttpSinkTask.class.getName(), "1.0.0");
+		
 		
 		try {
 			
@@ -162,13 +162,13 @@ public class HttpSinkTask extends SinkTask {
 	                .create();
 			
 			for(final SinkRecord record : records) {
-//				span = TelemetryConfig.getContext(record.headers());
-				//Context parentContext = Context.current().with(mainSpan);
+				var mainSpan = TelemetryConfig.getContext(record.headers());
+				Context parentContext = Context.current().with(mainSpan);
 				
-				//try(Scope scope = span.makeCurrent()) {
+				try(Scope scope = mainSpan.makeCurrent()) {
 					
 					span = tracer.spanBuilder("processRecord")
-//							.setParent(parentContext)
+							.setParent(parentContext)
 							.startSpan();
 					
 	                span.setAttribute("kafka.topic", record.topic());
@@ -176,12 +176,13 @@ public class HttpSinkTask extends SinkTask {
 	                span.setAttribute("kafka.offset", record.kafkaOffset());
 					
 					sendToHttp(record, span);
+			
 					
-//				}
-//				finally {
-//					if (span != null)
-//						span.end();
-//		        }
+				}
+				finally {
+					if (mainSpan != null)
+						mainSpan.end();
+		        }
 				
 			}
 			
@@ -216,9 +217,10 @@ public class HttpSinkTask extends SinkTask {
             log.info(EntityUtils.toString(response.getEntity()));
             log.info("==============");
             Context parentContext = Context.current().with(parentSpan);
-            
-            Span reqSpan = tracer.spanBuilder(request.getScheme().toUpperCase() + " "+ request.getMethod() )
-    			.setParent(parentContext).startSpan();
+            String path = request.getScheme().toUpperCase() + " "+ request.getMethod();
+            Span reqSpan = tracer.spanBuilder(path)
+    			.setParent(parentContext)
+    			.startSpan();
             
             reqSpan.setAttribute("http.method", request.getMethod());
             reqSpan.setAttribute("http.scheme", request.getScheme());

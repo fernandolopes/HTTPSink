@@ -56,9 +56,9 @@ public class TelemetryConfig {
 			metricExporter = OtlpHttpMetricExporter.builder()
 	        		.setEndpoint(endpoint + "/v1/metrics")
 	        		.build();
-//			logExporter = OtlpHttpLogRecordExporter.builder()
-//	        		.setEndpoint(endpoint + "/v1/logs")
-//	        		.build();
+			logExporter = OtlpHttpLogRecordExporter.builder()
+	        		.setEndpoint(endpoint + "/v1/logs")
+	        		.build();
 		}
 		else {
 			spanExporter = OtlpGrpcSpanExporter.builder()
@@ -67,16 +67,16 @@ public class TelemetryConfig {
 			metricExporter = OtlpGrpcMetricExporter.builder()
 	        		.setEndpoint(endpoint)
 	        		.build();
-//			logExporter = OtlpGrpcLogRecordExporter.builder()
-//	        		.setEndpoint(endpoint)
-//	        		.build();
+			logExporter = OtlpGrpcLogRecordExporter.builder()
+	        		.setEndpoint(endpoint)
+	        		.build();
 		}
 		
         
-//        var loggerProvider = SdkLoggerProvider.builder()
-//        		.addLogRecordProcessor(SimpleLogRecordProcessor.create(logExporter))
-//    			.setResource(resource)
-//        		.build();
+        var loggerProvider = SdkLoggerProvider.builder()
+        		.addLogRecordProcessor(SimpleLogRecordProcessor.create(logExporter))
+    			.setResource(resource)
+        		.build();
         
         var metricProvider = SdkMeterProvider.builder()
         		.setResource(resource)
@@ -88,13 +88,12 @@ public class TelemetryConfig {
                 .setResource(resource)
                 .build();
         
-        ContextPropagators a = ContextPropagators.create(W3CTraceContextPropagator.getInstance());
         
         return OpenTelemetrySdk.builder()
-        		.setPropagators(a)
+        		.setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
         		.setTracerProvider(tracerProvider)
         		.setMeterProvider(metricProvider)
-//        		.setLoggerProvider(loggerProvider)
+        		.setLoggerProvider(loggerProvider)
         		.build();
 		}
 		catch (Exception e) {
