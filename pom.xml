@@ -6,7 +6,7 @@ Projeto para iniciar testes de customizar um conector.
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.fernandolopes</groupId>
   <artifactId>HTTPSink</artifactId>
-  <version>0.0.14</version>
+  <version>0.0.16</version>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Projeto base para um connector kafka http sink</description>
   <url>https://github.com/fernandolopes/HTTPSink</url>
@@ -191,11 +191,11 @@ Projeto para iniciar testes de customizar um conector.
 	    <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
 	    <version>1.19.0-alpha</version>
 	</dependency>
-	<!--<dependency>
+	<dependency>
 	    <groupId>io.opentelemetry</groupId>
 	    <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
 	    <version>1.36.0</version>
-	</dependency>-->
+	</dependency>
 	<dependency>
 	    <groupId>io.opentelemetry</groupId>
 	    <artifactId>opentelemetry-sdk</artifactId>
