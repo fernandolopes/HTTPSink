@@ -6,7 +6,7 @@ Projeto para iniciar testes de customizar um conector.
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.fernandolopes</groupId>
   <artifactId>HTTPSink</artifactId>
-  <version>0.0.14</version>
+  <version>0.0.20</version>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Projeto base para um connector kafka http sink</description>
   <url>https://github.com/fernandolopes/HTTPSink</url>

@@ -3,7 +3,7 @@
 
 # Log file
 *.log
-
+chave_privada.gpg
 # BlueJ files
 *.ctxt
 

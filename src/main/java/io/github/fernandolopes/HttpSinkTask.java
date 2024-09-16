@@ -69,7 +69,6 @@ public class HttpSinkTask extends SinkTask {
 	private String topics;
 	private boolean copyHeaders = true;
 	private OpenTelemetry openTelemetry = null;
-    private Tracer tracer = null;
 	
 	@Override
 	public String version() {
@@ -81,7 +80,6 @@ public class HttpSinkTask extends SinkTask {
 		log.info("comecou aqui");
 		
 		openTelemetry = TelemetryConfig.initOpenTelemetry();
-		tracer = openTelemetry.getTracer(HttpSinkTask.class.getName(), "1.0.0");
 		
 		AbstractConfig config = new AbstractConfig(HttpSinkConnectConfig.conf(), props);
 		
@@ -129,6 +127,10 @@ public class HttpSinkTask extends SinkTask {
 		
 		Span span = null;
 		
+		if (records.isEmpty()) {
+	      return;
+	    }
+		
 		
 		try {
 			
@@ -166,8 +168,8 @@ public class HttpSinkTask extends SinkTask {
 				Context parentContext = Context.current().with(mainSpan);
 				
 				try(Scope scope = mainSpan.makeCurrent()) {
-					
-					span = tracer.spanBuilder("processRecord")
+				
+					span = TelemetryConfig.tracer.spanBuilder("processRecord")
 							.setParent(parentContext)
 							.startSpan();
 					
@@ -176,13 +178,11 @@ public class HttpSinkTask extends SinkTask {
 	                span.setAttribute("kafka.offset", record.kafkaOffset());
 					
 					sendToHttp(record, span);
-			
+					span.end();
 					
-				}
-				finally {
 					if (mainSpan != null)
 						mainSpan.end();
-		        }
+				}
 				
 			}
 			
@@ -218,7 +218,7 @@ public class HttpSinkTask extends SinkTask {
             log.info("==============");
             Context parentContext = Context.current().with(parentSpan);
             String path = request.getScheme().toUpperCase() + " "+ request.getMethod();
-            Span reqSpan = tracer.spanBuilder(path)
+            Span reqSpan = TelemetryConfig.tracer.spanBuilder(path)
     			.setParent(parentContext)
     			.startSpan();
             
@@ -228,7 +228,6 @@ public class HttpSinkTask extends SinkTask {
             reqSpan.setAttribute("http.url", request.getUri().toString());
             reqSpan.setAttribute("http.status_code", response.getCode());
             reqSpan.end();
-            parentSpan.end();
         } catch (IOException e) {
         	log.error(e.getMessage());
 			e.printStackTrace();
