@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.header.Headers;
-
 import io.github.fernandolopes.HttpSinkTask;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
@@ -20,6 +19,7 @@ import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+//import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import io.opentelemetry.sdk.logs.SdkLoggerProvider;
 import io.opentelemetry.sdk.logs.export.LogRecordExporter;
 import io.opentelemetry.sdk.logs.export.SimpleLogRecordProcessor;
@@ -130,9 +130,9 @@ public class TelemetryConfig {
         		.setMeterProvider(metricProvider)
         		.setLoggerProvider(loggerProvider)
         		.build();
+//        return AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
 		}
 		catch (Exception e) {
-			// TODO: handle exception
 			e.printStackTrace();
 			throw e;
 		}

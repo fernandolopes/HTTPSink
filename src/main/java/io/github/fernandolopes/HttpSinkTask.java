@@ -3,6 +3,7 @@ package io.github.fernandolopes;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -192,6 +193,8 @@ public class HttpSinkTask extends SinkTask {
 			log.error(e.getMessage());
 			if (span != null) {
 				span.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem "+ e);
+				span.setAttribute("otel.status_code", "ERROR");
+				span.setAttribute("otel.status_description", "Falha ao enviar mensagem "+ e);
 				span.end();
 			}
 			throw new RetriableException("Falha ao enviar mensagem", e);
@@ -222,11 +225,30 @@ public class HttpSinkTask extends SinkTask {
     			.setParent(parentContext)
     			.startSpan();
             
-            reqSpan.setAttribute("http.method", request.getMethod());
-            reqSpan.setAttribute("http.scheme", request.getScheme());
-            reqSpan.setAttribute("net.peer.name", request.getRequestUri());
-            reqSpan.setAttribute("http.url", request.getUri().toString());
-            reqSpan.setAttribute("http.status_code", response.getCode());
+//            reqSpan.setAttribute("http.method", request.getMethod());
+//            reqSpan.setAttribute("http.scheme", request.getScheme());
+//            reqSpan.setAttribute("net.peer.name", request.getRequestUri());
+//            reqSpan.setAttribute("http.url", request.getUri().toString());
+//            reqSpan.setAttribute("http.status_code", response.getCode());
+
+			Properties prop = new Properties();
+			prop.load(HttpSinkTask.class.getClassLoader().getResourceAsStream("config.properties"));
+			//get the property value and print it out
+			System.out.println(prop.getProperty("service.framework.name"));
+
+			reqSpan.setAttribute("http.request.method", request.getMethod());
+			reqSpan.setAttribute("http.response.status_code", response.getCode());
+			reqSpan.setAttribute("url.full", request.getUri().toString());
+			reqSpan.setAttribute("url.original", request.getUri().toString());
+			reqSpan.setAttribute("url.path", request.getUri().toString());
+			reqSpan.setAttribute("url.schema", request.getScheme());
+			reqSpan.setAttribute("service.language", "java");
+			reqSpan.setAttribute("service.framework.name", prop.getProperty("service.framework.name"));
+			reqSpan.setAttribute("otel.library.version", prop.getProperty("otel.library.version"));
+			reqSpan.setAttribute("service.name", "Connect-Sink");
+			reqSpan.setAttribute("span.kind", "client");
+			reqSpan.setStatus(StatusCode.OK, "Requested successfully");
+			reqSpan.setAttribute("otel.status_code", "OK");
             reqSpan.end();
         } catch (IOException e) {
         	log.error(e.getMessage());
