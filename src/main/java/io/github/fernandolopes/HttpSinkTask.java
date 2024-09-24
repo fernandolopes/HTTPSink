@@ -1,15 +1,16 @@
 package io.github.fernandolopes;
 
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.charset.Charset;
+
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
@@ -29,10 +30,11 @@ import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.apache.hc.core5.http.message.RequestLine;
 import org.apache.hc.core5.http.message.StatusLine;
 import org.apache.hc.core5.http.protocol.HttpCoreContext;
+import org.apache.hc.core5.io.CloseMode;
 import org.apache.hc.core5.util.Timeout;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.connect.errors.RetriableException;
-import org.apache.kafka.connect.header.Headers;
+import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
@@ -40,22 +42,12 @@ import org.slf4j.LoggerFactory;
 
 import io.github.fernandolopes.core.TelemetryConfig;
 import io.github.fernandolopes.core.Utils;
-import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.logs.Severity;
 import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.TraceFlags;
-import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.ContextKey;
 import io.opentelemetry.context.Scope;
-import io.opentelemetry.context.propagation.TextMapGetter;
-import io.opentelemetry.context.propagation.TextMapPropagator;
 
 
 public class HttpSinkTask extends SinkTask {
@@ -70,6 +62,11 @@ public class HttpSinkTask extends SinkTask {
 	private String topics;
 	private boolean copyHeaders = true;
 	private OpenTelemetry openTelemetry = null;
+	int remainingRetries;
+	int maxRetries;
+	int retryBackoffMs;
+	private ErrantRecordReporter reporter;
+	private Tracer tracer = null;
 	
 	@Override
 	public String version() {
@@ -81,6 +78,7 @@ public class HttpSinkTask extends SinkTask {
 		log.info("comecou aqui");
 		
 		openTelemetry = TelemetryConfig.initOpenTelemetry();
+		tracer = openTelemetry.getTracer(HttpSinkTask.class.getName(), "1.0.0");
 		
 		AbstractConfig config = new AbstractConfig(HttpSinkConnectConfig.conf(), props);
 		
@@ -89,8 +87,19 @@ public class HttpSinkTask extends SinkTask {
 		output = config.getString(HttpSinkConnectConfig.SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_CONF);
 		
 		timeout = Timeout.ofSeconds(30);
-		
+		remainingRetries = config.getInt(HttpSinkConnectConfig.MAX_RETRIES);
+		maxRetries = remainingRetries;
+		retryBackoffMs = config.getInt(HttpSinkConnectConfig.RETRY_BACKOFF_MS);
 		log.info("Timeout: {}", data);
+		
+		if (context != null) {
+            try {
+                reporter = context.errantRecordReporter();
+            } catch (NoSuchMethodError | NoClassDefFoundError e) {
+                log.warn("Unable to instantiate ErrantRecordReporter.  Method 'SinkTaskContext.errantRecordReporter' does not exist.");
+                reporter = null;
+            }
+        }
 		
 		String urlBase = config.getString(HttpSinkConnectConfig.SINK_URL_CONF);
 		requestUri = config.getString(HttpSinkConnectConfig.SINK_HTTPS_PATH_HTTP_URI_CONF);
@@ -115,12 +124,28 @@ public class HttpSinkTask extends SinkTask {
 		
 		copyHeaders = config.getBoolean(HttpSinkConnectConfig.SINK_HTTPS_ENDPOINT_COPY_HEADERS_CONF);
 		
-		target = new HttpHost(urlBase);
-		
-		log.info("Method: {}", method);
-		log.info("URL Base: {}", urlBase);
-		log.info("rest: {}", requestUri);
-		
+		try {
+            URL url = new URL(urlBase);
+            String schema = url.getProtocol();
+            String host = url.getHost();
+            int port = url.getPort();
+            
+            // Se a porta não estiver definida, URL.getPort() retorna -1, então definimos a porta padrão com base no protocolo.
+//            if (port == -1) {
+//                port = schema.equals("https") ? 443 : 80;
+//            }
+            target = new HttpHost(schema, host, port);
+            
+            log.info("Schema: " + schema);
+            log.info("Host: " + host);
+            log.info("Porta: " + port);
+            log.info("rest: {}", requestUri);
+            log.info("Method: {}", method);
+            
+        } catch (MalformedURLException e) {
+            // Retorna null ou lança uma exceção se a URL for inválida
+            System.err.println("URL inválida: " + e.getMessage());
+        }
 	}
 
 	@Override
@@ -169,8 +194,8 @@ public class HttpSinkTask extends SinkTask {
 				Context parentContext = Context.current().with(mainSpan);
 				
 				try(Scope scope = mainSpan.makeCurrent()) {
-				
-					span = TelemetryConfig.tracer.spanBuilder("processRecord")
+					
+					span = tracer.spanBuilder("processRecord")
 							.setParent(parentContext)
 							.startSpan();
 					
@@ -184,29 +209,47 @@ public class HttpSinkTask extends SinkTask {
 					if (mainSpan != null)
 						mainSpan.end();
 				}
+				catch(ConnectException e) {
+					log.error("falha controlada de conectividade: {}",e.getMessage());
+					if (span != null) {
+						span.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem "+ e);
+						span.setAttribute("otel.status_code", "ERROR");
+						span.setAttribute("otel.status_description", "Falha ao enviar mensagem "+ e);
+						span.end();
+					}
+					if (remainingRetries > 0) {
+						remainingRetries--;
+				        context.timeout(retryBackoffMs);
+						throw new RetriableException("Falha ao enviar mensagem", e);
+					}
+					remainingRetries = maxRetries;
+					log.warn("A delivery has failed and the error reporting is enabled. Sending record to the DLQ");
+		            reporter.report(record, e);
+				}
 				
 			}
 			
 			httpRequester.close();
 		
-		} catch (Exception e) {
-			log.error(e.getMessage());
+		}
+		catch (Exception e)
+		{
+			log.error("falha controlada: {}", e.getMessage());
 			if (span != null) {
 				span.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem "+ e);
 				span.setAttribute("otel.status_code", "ERROR");
 				span.setAttribute("otel.status_description", "Falha ao enviar mensagem "+ e);
 				span.end();
 			}
+			
 			throw new RetriableException("Falha ao enviar mensagem", e);
 		}
-
-		
 	}
 	
 	
 	
 	
-	private void sendToHttp(SinkRecord record, Span parentSpan) throws Exception {
+	private void sendToHttp(SinkRecord record, Span parentSpan) throws Exception, ConnectException {
 		
 		String data = record.value().toString();
 		log.info(data);
@@ -221,7 +264,7 @@ public class HttpSinkTask extends SinkTask {
             log.info("==============");
             Context parentContext = Context.current().with(parentSpan);
             String path = request.getScheme().toUpperCase() + " "+ request.getMethod();
-            Span reqSpan = TelemetryConfig.tracer.spanBuilder(path)
+            Span reqSpan = tracer.spanBuilder(path)
     			.setParent(parentContext)
     			.startSpan();
             
@@ -253,9 +296,11 @@ public class HttpSinkTask extends SinkTask {
         } catch (IOException e) {
         	log.error(e.getMessage());
 			e.printStackTrace();
+			throw e;
 		} catch (HttpException e) {
 			log.error(e.getMessage());
 			e.printStackTrace();
+			throw e;
 		}
 		
 	}
@@ -303,7 +348,7 @@ public class HttpSinkTask extends SinkTask {
 	@Override
 	public void stop() {
 		log.info("parou aqui");
-		
+		httpRequester.close(CloseMode.IMMEDIATE);
 	}
 
 }

@@ -29,7 +29,7 @@ public class HttpSinkTaskTest {
 	    props = new HashMap<String, String>();
 		
 	    props.put("component.https.soTimeout", "30 seconds");
-		props.put("sink.url", "viacep.com.br");
+		props.put("sink.url", "https://viacep.com.br");
 		props.put("sink.path.httpUri", "/ws/${key}/json/");
 		props.put("bootstrap.servers", "localhost:9092");
 //		props.put("key.converter", "org.apache.kafka.connect.storage.StringConverter");

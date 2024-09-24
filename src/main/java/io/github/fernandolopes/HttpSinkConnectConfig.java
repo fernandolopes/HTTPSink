@@ -58,6 +58,16 @@ public class HttpSinkConnectConfig extends AbstractConfig {
     public static final String SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DOC = "output value for the request can be: string, json. default is string";
     public static final String SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DEFAULT = "string";
     
+    public static final String MAX_RETRIES = "max.retries";
+    public static final int MAX_RETRIES_DEFAULT = 10;
+    public static final String MAX_RETRIES_DOC = "The maximum number of times to retry on errors before failing the task.";
+    public static final String MAX_RETRIES_DISPLAY = "Maximum Retries";
+
+    public static final String RETRY_BACKOFF_MS = "retry.backoff.ms";
+    public static final int RETRY_BACKOFF_MS_DEFAULT = 3000;
+    public static final String RETRY_BACKOFF_MS_DOC = "The time in milliseconds to wait following an error before a retry attempt is made.";
+    public static final String RETRY_BACKOFF_MS_DISPLAY = "Retry Backoff (millis)";
+    
 
     protected HttpSinkConnectConfig(ConfigDef definition, Map<?, ?> originals, Map<String, ?> configProviderProps, boolean doLog) {
         super(definition, originals, configProviderProps, doLog);
@@ -78,17 +88,19 @@ public class HttpSinkConnectConfig extends AbstractConfig {
         ConfigDef conf = new ConfigDef();
         
         conf.define(SINK_URL_CONF,                                        Type.STRING,            SINK_URL_DEFAULT,                                        Importance.HIGH,             SINK_URL_DOC);
-        conf.define(CONNECTOR_MAP_HEADERS_CONF,                           Type.BOOLEAN,           CONNECTOR_MAP_HEADERS_DEFAULT,                           Importance.MEDIUM,           CONNECTOR_MAP_HEADERS_DOC);
-        conf.define(SINK_HTTPS_PATH_HTTP_URI_CONF,                        ConfigDef.Type.STRING,  SINK_HTTPS_PATH_HTTP_URI_DEFAULT,                        ConfigDef.Importance.HIGH,   SINK_HTTPS_PATH_HTTP_URI_DOC);
-        conf.define(SINK_HTTPS_ENDPOINT_DISABLE_STREAM_CACHE_CONF,        ConfigDef.Type.BOOLEAN, SINK_HTTPS_ENDPOINT_DISABLE_STREAM_CACHE_DEFAULT,        ConfigDef.Importance.MEDIUM, SINK_HTTPS_ENDPOINT_DISABLE_STREAM_CACHE_DOC);
-        conf.define(SINK_HTTPS_ENDPOINT_HEADER_FILTER_STRATEGY_CONF,      ConfigDef.Type.STRING,  SINK_HTTPS_ENDPOINT_HEADER_FILTER_STRATEGY_DEFAULT,      ConfigDef.Importance.MEDIUM, SINK_HTTPS_ENDPOINT_HEADER_FILTER_STRATEGY_DOC);
-        conf.define(SINK_HTTPS_ENDPOINT_BRIDGE_ENDPOINT_CONF,             ConfigDef.Type.BOOLEAN, SINK_HTTPS_ENDPOINT_BRIDGE_ENDPOINT_DEFAULT,             ConfigDef.Importance.MEDIUM, SINK_HTTPS_ENDPOINT_BRIDGE_ENDPOINT_DOC);
-        conf.define(SINK_HTTPS_ENDPOINT_HTTP_METHOD_CONF,                 ConfigDef.Type.STRING,  SINK_HTTPS_ENDPOINT_HTTP_METHOD_DEFAULT,                 ConfigDef.Importance.MEDIUM, SINK_HTTPS_ENDPOINT_HTTP_METHOD_DOC);
-        conf.define(SINK_HTTPS_ENDPOINT_COPY_HEADERS_CONF,                ConfigDef.Type.BOOLEAN, SINK_HTTPS_ENDPOINT_COPY_HEADERS_DEFAULT,                ConfigDef.Importance.MEDIUM, SINK_HTTPS_ENDPOINT_COPY_HEADERS_DOC);
-        conf.define(SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_CONF,          ConfigDef.Type.STRING,  SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_DEFAULT,          ConfigDef.Importance.MEDIUM, SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_DOC);
-        conf.define(SINK_HTTPS_COMPONENT_SO_TIMEOUT_CONF,                 ConfigDef.Type.STRING,  SINK_HTTPS_COMPONENT_SO_TIMEOUT_DEFAULT,                 ConfigDef.Importance.MEDIUM, SINK_HTTPS_COMPONENT_SO_TIMEOUT_DOC);
-        conf.define(SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_CONF,         ConfigDef.Type.STRING,  SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DEFAULT,         ConfigDef.Importance.LOW, SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DOC);
-        conf.define("topics", 											  ConfigDef.Type.STRING,  null, 												   ConfigDef.Importance.HIGH, "");
+        conf.define(CONNECTOR_MAP_HEADERS_CONF,                           Type.BOOLEAN,           CONNECTOR_MAP_HEADERS_DEFAULT,                           Importance.LOW,           	CONNECTOR_MAP_HEADERS_DOC);
+        conf.define(SINK_HTTPS_PATH_HTTP_URI_CONF,                        Type.STRING,  		  SINK_HTTPS_PATH_HTTP_URI_DEFAULT,                        Importance.HIGH,   			SINK_HTTPS_PATH_HTTP_URI_DOC);
+        conf.define(SINK_HTTPS_ENDPOINT_DISABLE_STREAM_CACHE_CONF,        Type.BOOLEAN, 		  SINK_HTTPS_ENDPOINT_DISABLE_STREAM_CACHE_DEFAULT,        Importance.LOW, 				SINK_HTTPS_ENDPOINT_DISABLE_STREAM_CACHE_DOC);
+        conf.define(SINK_HTTPS_ENDPOINT_HEADER_FILTER_STRATEGY_CONF,      Type.STRING,  		  SINK_HTTPS_ENDPOINT_HEADER_FILTER_STRATEGY_DEFAULT,      Importance.LOW, 				SINK_HTTPS_ENDPOINT_HEADER_FILTER_STRATEGY_DOC);
+        conf.define(SINK_HTTPS_ENDPOINT_BRIDGE_ENDPOINT_CONF,             Type.BOOLEAN, 		  SINK_HTTPS_ENDPOINT_BRIDGE_ENDPOINT_DEFAULT,             Importance.MEDIUM, 			SINK_HTTPS_ENDPOINT_BRIDGE_ENDPOINT_DOC);
+        conf.define(SINK_HTTPS_ENDPOINT_HTTP_METHOD_CONF,                 Type.STRING,  		  SINK_HTTPS_ENDPOINT_HTTP_METHOD_DEFAULT,                 Importance.MEDIUM, 			SINK_HTTPS_ENDPOINT_HTTP_METHOD_DOC);
+        conf.define(SINK_HTTPS_ENDPOINT_COPY_HEADERS_CONF,                Type.BOOLEAN, 		  SINK_HTTPS_ENDPOINT_COPY_HEADERS_DEFAULT,                Importance.MEDIUM, 			SINK_HTTPS_ENDPOINT_COPY_HEADERS_DOC);
+        conf.define(SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_CONF,          Type.STRING,  		  SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_DEFAULT,          Importance.MEDIUM, 			SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_DOC);
+        conf.define(SINK_HTTPS_COMPONENT_SO_TIMEOUT_CONF,                 Type.STRING,  		  SINK_HTTPS_COMPONENT_SO_TIMEOUT_DEFAULT,                 Importance.LOW, 				SINK_HTTPS_COMPONENT_SO_TIMEOUT_DOC);
+        conf.define(SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_CONF,         Type.STRING,  		  SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DEFAULT,         Importance.LOW, 				SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DOC);
+        conf.define("topics", 											  Type.STRING,  		  null, 												   Importance.HIGH, 			"");
+        conf.define(MAX_RETRIES, 										  Type.INT, 			  MAX_RETRIES_DEFAULT, 									   Importance.LOW, 				MAX_RETRIES_DOC);
+        conf.define(RETRY_BACKOFF_MS, 								      Type.INT, 			  RETRY_BACKOFF_MS_DEFAULT, 							   Importance.LOW, 				RETRY_BACKOFF_MS_DOC);
         return conf;
 	}
 

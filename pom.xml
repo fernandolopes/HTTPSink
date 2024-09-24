@@ -6,7 +6,7 @@ Projeto para iniciar testes de customizar um conector.
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.fernandolopes</groupId>
   <artifactId>HTTPSink</artifactId>
-  <version>0.0.21</version>
+  <version>0.0.23</version>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Projeto base para um connector kafka http sink</description>
   <url>https://github.com/fernandolopes/HTTPSink</url>
@@ -34,6 +34,24 @@ Projeto para iniciar testes de customizar um conector.
 
   <build>
     <plugins>
+		<!--<plugin>
+	      <groupId>io.confluent</groupId>
+	      <artifactId>kafka-connect-maven-plugin</artifactId>
+	      <version>0.12.0</version>
+	      <executions>
+			  <execution>
+				<goals>
+                	<goal>kafka-connect</goal>
+                </goals>
+	      		<configuration>  
+		        <componentTypes>sink</componentTypes>
+		        <name>HTTPSink</name>
+		        <ownerUsername>HTTP</ownerUsername>
+		        <description>some funny connector</description>
+		      </configuration>
+	      	</execution>
+	      </executions>
+	    </plugin>-->
 		<plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
@@ -110,6 +128,22 @@ Projeto para iniciar testes de customizar um conector.
             <!--<ignorePublishedComponents>true</ignorePublishedComponents>-->
           </configuration>
         </plugin>
+        <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+        </configuration>
+      </plugin>
     </plugins>
 </build>
   
