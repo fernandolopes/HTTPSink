@@ -259,8 +259,10 @@ public class HttpSinkTask extends SinkTask {
 		HttpCoreContext coreContext = HttpCoreContext.create();
 		
 		try (ClassicHttpResponse response = httpRequester.execute(target, request, timeout, coreContext)) {
-            log.info(requestUri + "->" + response.getCode());
-            log.info(EntityUtils.toString(response.getEntity()));
+			int statusCode = response.getCode();
+            log.info(requestUri + " --> " + statusCode);
+            if (statusCode != 204)
+            	log.info(EntityUtils.toString(response.getEntity()));
             log.info("==============");
             Context parentContext = Context.current().with(parentSpan);
             String path = request.getScheme().toUpperCase() + " "+ request.getMethod();
