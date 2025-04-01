@@ -47,7 +47,8 @@ public class HttpSender {
 		try (ClassicHttpResponse response = httpRequester.execute(target, request, timeout, HttpCoreContext.create())) {
 			int statusCode = response.getCode();
 			if (statusCode != 204) {
-				EntityUtils.toString(response.getEntity());
+				var body = EntityUtils.toString(response.getEntity());
+				System.out.println(method + " " + target + request.getPath() + " - " + statusCode + " - " + body);
 			}
 		}
 	}
