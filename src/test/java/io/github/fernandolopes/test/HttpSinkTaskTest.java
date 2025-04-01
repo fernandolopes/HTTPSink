@@ -11,7 +11,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkConnectorContext;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.apache.kafka.connect.transforms.InsertHeader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -78,7 +77,6 @@ public class HttpSinkTaskTest {
 		
 		final HttpSinkTask task = new HttpSinkTask();
 		task.start(props);
-		Object obj = new Object();
 		
 		ConnectHeaders headers = new ConnectHeaders();
 //		headers.addString("x-api-version", "v2");
