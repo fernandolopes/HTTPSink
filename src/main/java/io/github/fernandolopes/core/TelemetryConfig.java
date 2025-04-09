@@ -3,20 +3,19 @@ package io.github.fernandolopes.core;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
-
 import org.apache.kafka.connect.header.Headers;
-
-import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
+import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.ContextPropagators;
+import io.opentelemetry.exporter.logging.LoggingSpanExporter;
 import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
 import io.opentelemetry.exporter.otlp.http.metrics.OtlpHttpMetricExporter;
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
@@ -24,7 +23,6 @@ import io.opentelemetry.exporter.otlp.logs.OtlpGrpcLogRecordExporter;
 import io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter;
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
-//import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import io.opentelemetry.sdk.logs.SdkLoggerProvider;
 import io.opentelemetry.sdk.logs.export.LogRecordExporter;
 import io.opentelemetry.sdk.logs.export.SimpleLogRecordProcessor;
@@ -42,13 +40,17 @@ public class TelemetryConfig {
 	public static OpenTelemetry initOpenTelemetry() {
 		try {
         
-			var service = System.getenv("OTEL_SERVICE_NAME");
+			var service = "connect-http-sink";//System.getenv("OTEL_SERVICE_NAME");
 			
 			if (service == null)
 				return null;
 			
 			var resource = Resource.getDefault()
-				        .merge(Resource.create(Attributes.of(ResourceAttributes.SERVICE_NAME, service)));
+			.toBuilder()
+			.put(ResourceAttributes.SERVICE_NAME, service)
+			.put(ResourceAttributes.SERVICE_VERSION, "1.0.0")
+			.put(ResourceAttributes.SERVICE_NAMESPACE, "io.github.fernandolopes")
+			.build();
 	        
 	        var otelHeader = System.getenv("OTEL_EXPORTER_OTLP_HEADERS");
 	        Supplier<Map<String, String>> mapSupplier = null;
@@ -69,41 +71,49 @@ public class TelemetryConfig {
 	                }
 	            };
 	        }
-			var endpoint = System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT");
+			var endpoint = "http://localhost:4318";//System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT");
 			System.out.println("endpoint otel" + endpoint);
-			//"http://opentelemetry.apps.ocp-stg.pmenos.com.br/v1/traces"
-			//"http://otel-collector-headless.sistemas-integracao.svc.cluster.local:4317"
 			
 			SpanExporter spanExporter = null;
 			MetricExporter metricExporter = null;
 			LogRecordExporter logExporter = null;
 			
 			if (!endpoint.contains("4317")) {
-				spanExporter = OtlpHttpSpanExporter.builder()
-						.setHeaders(mapSupplier)
-		        		.setEndpoint(endpoint + "/v1/traces")
+				var sExporter = OtlpHttpSpanExporter.builder();
+				if(otelHeader != null && !otelHeader.isEmpty())
+					sExporter.setHeaders(mapSupplier);
+		        spanExporter = sExporter.setEndpoint(endpoint + "/v1/traces")
 		        		.build();
-				metricExporter = OtlpHttpMetricExporter.builder()
-						.setHeaders(mapSupplier)
-		        		.setEndpoint(endpoint + "/v1/metrics")
+
+				var mExpoter = OtlpHttpMetricExporter.builder();
+				if(otelHeader != null && !otelHeader.isEmpty())
+						mExpoter.setHeaders(mapSupplier);
+				metricExporter = mExpoter.setEndpoint(endpoint + "/v1/metrics")
 		        		.build();
-				logExporter = OtlpHttpLogRecordExporter.builder()
-						.setHeaders(mapSupplier)
-		        		.setEndpoint(endpoint + "/v1/logs")
+
+				var lExporter = OtlpHttpLogRecordExporter.builder();
+				if(otelHeader != null && !otelHeader.isEmpty())
+					lExporter.setHeaders(mapSupplier);
+				logExporter	= lExporter.setEndpoint(endpoint + "/v1/logs")
 		        		.build();
 			}
 			else {
-				spanExporter = OtlpGrpcSpanExporter.builder()
-						.setHeaders(mapSupplier)
-		        		.setEndpoint(endpoint)
+				var sExporter = OtlpGrpcSpanExporter.builder();
+				if(otelHeader != null && !otelHeader.isEmpty())
+					sExporter.setHeaders(mapSupplier);
+		        spanExporter = sExporter.setEndpoint(endpoint + "/v1/traces")
 		        		.build();
-				metricExporter = OtlpGrpcMetricExporter.builder()
-						.setHeaders(mapSupplier)
-		        		.setEndpoint(endpoint)
+
+				var mExpoter = OtlpGrpcMetricExporter.builder();
+				if(otelHeader != null && !otelHeader.isEmpty())
+						mExpoter.setHeaders(mapSupplier);
+				metricExporter = mExpoter.setEndpoint(endpoint + "/v1/metrics")
 		        		.build();
-				logExporter = OtlpGrpcLogRecordExporter.builder()
-						.setHeaders(mapSupplier)
-		        		.setEndpoint(endpoint)
+
+				var lExporter = OtlpGrpcLogRecordExporter.builder();
+				if(otelHeader != null && !otelHeader.isEmpty())
+					lExporter.setHeaders(mapSupplier);
+				logExporter	= lExporter.setEndpoint(endpoint + "/v1/logs")
 		        		.build();
 			}
 			
@@ -118,8 +128,11 @@ public class TelemetryConfig {
 	        		.registerMetricReader(PeriodicMetricReader.builder(metricExporter).build())
 	        		.build();
 	        
+			LoggingSpanExporter loggingSpanExporter = LoggingSpanExporter.create();
+
 	        var tracerProvider = SdkTracerProvider.builder()
 	                .addSpanProcessor(SimpleSpanProcessor.create(spanExporter))
+					.addSpanProcessor(SimpleSpanProcessor.create(loggingSpanExporter))
 	                .setResource(resource)
 	                .build();
 	        
@@ -130,7 +143,6 @@ public class TelemetryConfig {
 	        		.setMeterProvider(metricProvider)
 	        		.setLoggerProvider(loggerProvider)
 	        		.build();
-//        	return AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -138,7 +150,7 @@ public class TelemetryConfig {
 		}
 	}
 		
-	public static Span getContext(Headers headerList) {
+	public static Span getContext(Headers headerList, Tracer tracer) {
 		String traceparent = null;
 		for(var e : headerList) {
 			System.out.println("chave: " + e.key());
@@ -147,26 +159,22 @@ public class TelemetryConfig {
 		}
 		System.out.println("trace current: " + traceparent);
 		
-		if(traceparent == null)
-			return GlobalOpenTelemetry.getTracer("")
-			        .spanBuilder("root span name")
-			        .setSpanKind(SpanKind.INTERNAL)
-			        .setParent(Context.current())
-			        .startSpan();
+	
+		SpanBuilder span = tracer.spanBuilder("root span name").setSpanKind(SpanKind.CONSUMER);
 
-		String[] ids = Utils.extractIds(traceparent);
-		
-		SpanContext remoteContext = SpanContext.createFromRemoteParent(
-				ids[0],
-				ids[1],
-                TraceFlags.getSampled(),
-                TraceState.getDefault());
-		
-		return GlobalOpenTelemetry.getTracer("")
-		        .spanBuilder("root span name")
-		        .setSpanKind(SpanKind.INTERNAL)
-		        .setParent(Context.current().with(Span.wrap(remoteContext)))
-		        .startSpan();
+		if (traceparent != null) {
+			String[] ids = Utils.extractIds(traceparent);
+			
+			SpanContext remoteContext = SpanContext.createFromRemoteParent(
+					ids[0],
+					ids[1],
+					TraceFlags.getSampled(),
+					TraceState.getDefault());
+
+			span.setParent(Context.current().with(Span.wrap(remoteContext)));
+		}
+
+		return span.startSpan();
 		
 	}
 	

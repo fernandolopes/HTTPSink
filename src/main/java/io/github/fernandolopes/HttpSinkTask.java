@@ -2,15 +2,13 @@ package io.github.fernandolopes;
 
 import java.io.IOException;
 import java.net.ConnectException;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
@@ -39,15 +37,14 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import io.github.fernandolopes.core.TelemetryConfig;
 import io.github.fernandolopes.core.Utils;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
-import io.opentelemetry.context.Scope;
 
 
 public class HttpSinkTask extends SinkTask {
@@ -124,39 +121,29 @@ public class HttpSinkTask extends SinkTask {
 		
 		copyHeaders = config.getBoolean(HttpSinkConnectConfig.SINK_HTTPS_ENDPOINT_COPY_HEADERS_CONF);
 		
-		try {
-            URL url = new URL(urlBase);
-            String schema = url.getProtocol();
-            String host = url.getHost();
-            int port = url.getPort();
+		URI url = URI.create(urlBase);
+		String schema = url.getScheme();
+		String host = url.getHost();
+		int port = url.getPort();
+		
+		target = new HttpHost(schema, host, port);
+		
+		log.info("Schema: " + schema);
+		log.info("Host: " + host);
+		log.info("Porta: " + port);
+		log.info("rest: {}", requestUri);
+		log.info("Method: {}", method);
             
-            // Se a porta não estiver definida, URL.getPort() retorna -1, então definimos a porta padrão com base no protocolo.
-//            if (port == -1) {
-//                port = schema.equals("https") ? 443 : 80;
-//            }
-            target = new HttpHost(schema, host, port);
-            
-            log.info("Schema: " + schema);
-            log.info("Host: " + host);
-            log.info("Porta: " + port);
-            log.info("rest: {}", requestUri);
-            log.info("Method: {}", method);
-            
-        } catch (MalformedURLException e) {
-            // Retorna null ou lança uma exceção se a URL for inválida
-            System.err.println("URL inválida: " + e.getMessage());
-        }
 	}
 
 	@Override
 	public void put(Collection<SinkRecord> records) {
-		
+		Span mainSpan = null;		
 		Span span = null;
 		
 		if (records.isEmpty()) {
 	      return;
 	    }
-		
 		
 		try {
 			
@@ -190,10 +177,10 @@ public class HttpSinkTask extends SinkTask {
 	                .create();
 			
 			for(final SinkRecord record : records) {
-				var mainSpan = TelemetryConfig.getContext(record.headers());
+				mainSpan = TelemetryConfig.getContext(record.headers(), tracer);
 				Context parentContext = Context.current().with(mainSpan);
 				
-				try(Scope scope = mainSpan.makeCurrent()) {
+				try {
 					
 					span = tracer.spanBuilder("processRecord")
 							.setParent(parentContext)
@@ -241,7 +228,7 @@ public class HttpSinkTask extends SinkTask {
 				span.setAttribute("otel.status_description", "Falha ao enviar mensagem "+ e);
 				span.end();
 			}
-			
+			mainSpan.end();
 			throw new RetriableException("Falha ao enviar mensagem", e);
 		}
 	}
@@ -258,23 +245,23 @@ public class HttpSinkTask extends SinkTask {
 		
 		HttpCoreContext coreContext = HttpCoreContext.create();
 		
+		Context parentContext = Context.current().with(parentSpan);
+		String path = request.getScheme().toUpperCase() + " "+ request.getMethod();
+
+		Span reqSpan = tracer.spanBuilder(path)
+    			.setParent(parentContext)
+				.setSpanKind(SpanKind.CLIENT)
+    			.startSpan();
+
 		try (ClassicHttpResponse response = httpRequester.execute(target, request, timeout, coreContext)) {
 			int statusCode = response.getCode();
             log.info(requestUri + " --> " + statusCode);
-            if (statusCode != 204)
-            	log.info(EntityUtils.toString(response.getEntity()));
+            if (statusCode != 204) {
+				var payload = EntityUtils.toString(response.getEntity());
+            	log.info(payload);
+				reqSpan.addEvent(payload);
+			}
             log.info("==============");
-            Context parentContext = Context.current().with(parentSpan);
-            String path = request.getScheme().toUpperCase() + " "+ request.getMethod();
-            Span reqSpan = tracer.spanBuilder(path)
-    			.setParent(parentContext)
-    			.startSpan();
-            
-//            reqSpan.setAttribute("http.method", request.getMethod());
-//            reqSpan.setAttribute("http.scheme", request.getScheme());
-//            reqSpan.setAttribute("net.peer.name", request.getRequestUri());
-//            reqSpan.setAttribute("http.url", request.getUri().toString());
-//            reqSpan.setAttribute("http.status_code", response.getCode());
 
 			Properties prop = new Properties();
 			prop.load(HttpSinkTask.class.getClassLoader().getResourceAsStream("config.properties"));
@@ -282,28 +269,29 @@ public class HttpSinkTask extends SinkTask {
 			System.out.println(prop.getProperty("service.framework.name"));
 
 			reqSpan.setAttribute("http.request.method", request.getMethod());
-			reqSpan.setAttribute("http.response.status_code", response.getCode());
 			reqSpan.setAttribute("url.full", request.getUri().toString());
 			reqSpan.setAttribute("url.original", request.getUri().toString());
 			reqSpan.setAttribute("url.path", request.getUri().toString());
 			reqSpan.setAttribute("url.schema", request.getScheme());
 			reqSpan.setAttribute("service.language", "java");
-			reqSpan.setAttribute("service.framework.name", prop.getProperty("service.framework.name"));
-			reqSpan.setAttribute("otel.library.version", prop.getProperty("otel.library.version"));
+			reqSpan.setAttribute("service.framework.name", "org.apache.httpcomponents.core5.httpcore5-h2");
+			reqSpan.setAttribute("otel.library.version", prop.getProperty("telemetry.sdk.version"));
 			reqSpan.setAttribute("service.name", "Connect-Sink");
-			reqSpan.setAttribute("span.kind", "client");
-			reqSpan.setStatus(StatusCode.OK, "Requested successfully");
-			reqSpan.setAttribute("otel.status_code", "OK");
+			reqSpan.setAttribute("http.response.status_code", statusCode);
+			reqSpan.setStatus((statusCode >= 200 && statusCode < 300)? StatusCode.OK : StatusCode.ERROR, (statusCode >= 200 && statusCode < 300)? "Requested successfully": "Failure");
+			reqSpan.setAttribute("http.status_code", statusCode);
             reqSpan.end();
         } catch (IOException e) {
         	log.error(e.getMessage());
+			reqSpan.end();
 			e.printStackTrace();
 			throw e;
 		} catch (HttpException e) {
 			log.error(e.getMessage());
+			reqSpan.end();
 			e.printStackTrace();
 			throw e;
-		}
+		} 
 		
 	}
 	

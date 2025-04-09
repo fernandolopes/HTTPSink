@@ -11,7 +11,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkConnectorContext;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.apache.kafka.connect.transforms.InsertHeader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +26,9 @@ public class HttpSinkTaskTest {
 	public void beforeEach() {
 	    connect = new HttpSinkConnect();
 	    props = new HashMap<String, String>();
+
+		System.setProperty("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318/v1/traces");
+		System.setProperty("OTEL_SERVICE_NAME", "connect-http-sink");
 		
 	    props.put("component.https.soTimeout", "30 seconds");
 		props.put("sink.url", "https://viacep.com.br");
@@ -73,27 +75,21 @@ public class HttpSinkTaskTest {
 	
 	@Test
 	public void shouldCreateSinkTaskStart() {
+
 		connect.start(props);
 		connect.taskConfigs(1);
-		
+
 		final HttpSinkTask task = new HttpSinkTask();
 		task.start(props);
-		Object obj = new Object();
 		
 		ConnectHeaders headers = new ConnectHeaders();
-//		headers.addString("x-api-version", "v2");
-		headers.addString("traceparent", "00-4ec7d23d222cd79740c96bfb01cf22bc-5d171069cca887b9-01");
-		
-		HashMap<String, Object> map = new HashMap<String, Object>();
-		map.put("userId", 1);
-		map.put("name", "Fernando");
-		map.put("age", 45);
+		headers.addString("traceparent", "00-58907994c47bda904a9233c4b8aff021-844f12e2a579d978-01");
 		
 		var content = "{\"userId\": 1, \"name\": \"Fernando\", \"id\": \"60335000\"}";
 		
 		var record = new SinkRecord(
 				"my-topic", 
-				0, 
+				1, 
 				Schema.STRING_SCHEMA, 
 				"\"60864240\"", 
 				Schema.BOOLEAN_SCHEMA, 
@@ -101,20 +97,47 @@ public class HttpSinkTaskTest {
 				0L,
                 0L, 
                 TimestampType.CREATE_TIME, 
-                headers, 
+                null, 
                 "my-topic", 
                 0, 
                 0L);
 		
 		var records = new ArrayList<SinkRecord>();
 		records.add(record);
-//		records.add(record);
-//		records.add(record);
-//		records.add(record);
-//		records.add(record);
 		
 		task.put(records);
-		//task.stop();
+	}
+
+	@Test
+	public void shouldErrorCreateSinkTaskStart() {
+
+		connect.start(props);
+		connect.taskConfigs(1);
+		
+		final HttpSinkTask task = new HttpSinkTask();
+		task.start(props);
+		
+		var content = "{\"userId\": 1, \"name\": \"Fernando\", \"id\": \"60335000\"}";
+		
+		var record = new SinkRecord(
+				"my-topic", 
+				0, 
+				Schema.STRING_SCHEMA, 
+				"", 
+				Schema.BOOLEAN_SCHEMA, 
+				content, 
+				0L,
+                0L, 
+                TimestampType.CREATE_TIME, 
+                null, 
+                "my-topic", 
+                0, 
+                0L);
+		
+		var records = new ArrayList<SinkRecord>();
+		records.add(record);
+		
+		task.put(records);
 	}
 
 }
