@@ -40,10 +40,10 @@ public class TelemetryConfig {
 	public static OpenTelemetry initOpenTelemetry() {
 		try {
         
-			var service = "connect-http-sink";//System.getenv("OTEL_SERVICE_NAME");
-			
-			if (service == null)
-				return null;
+			var service = System.getenv("OTEL_SERVICE_NAME");
+			if (service == null || service.isEmpty()) {
+				service = "connect-http-sink";
+			}
 			
 			var resource = Resource.getDefault()
 			.toBuilder()
@@ -71,7 +71,10 @@ public class TelemetryConfig {
 	                }
 	            };
 	        }
-			var endpoint = "http://localhost:4318";//System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT");
+			var endpoint = System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT");
+			if (endpoint == null || endpoint.isEmpty()) {
+				endpoint = "http://localhost:4317";
+			}
 			System.out.println("endpoint otel" + endpoint);
 			
 			SpanExporter spanExporter = null;
