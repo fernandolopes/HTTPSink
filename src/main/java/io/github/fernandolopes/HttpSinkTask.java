@@ -266,7 +266,7 @@ public class HttpSinkTask extends SinkTask {
 			Properties prop = new Properties();
 			prop.load(HttpSinkTask.class.getClassLoader().getResourceAsStream("config.properties"));
 			//get the property value and print it out
-			System.out.println(prop.getProperty("service.framework.name"));
+			log.info(prop.getProperty("service.framework.name"));
 
 			reqSpan.setAttribute("http.request.method", request.getMethod());
 			reqSpan.setAttribute("url.full", request.getUri().toString());

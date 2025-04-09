@@ -261,6 +261,11 @@ Projeto para iniciar testes de customizar um conector.
         <artifactId>opentelemetry-api</artifactId>
         <version>1.36.0</version>
     </dependency>
-
+    <dependency>
+        <groupId>io.opentelemetry.instrumentation</groupId>
+        <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+        <version>2.14.0-alpha</version>
+        <scope>runtime</scope>
+    </dependency>
   </dependencies>
 </project>

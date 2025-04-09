@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.kafka.connect.header.Headers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
@@ -36,6 +38,8 @@ import io.opentelemetry.sdk.trace.export.SpanExporter;
 import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 
 public class TelemetryConfig {
+
+	private static final Logger log = LoggerFactory.getLogger(TelemetryConfig.class);
 	
 	public static OpenTelemetry initOpenTelemetry() {
 		try {
@@ -65,7 +69,7 @@ public class TelemetryConfig {
 	                    if (parts.length == 2) {
 	                        map.put(parts[0], parts[1]);
 	                    } else {
-	                        System.out.println("A string de entrada não está no formato esperado.");
+	                        log.info("A string de entrada não está no formato esperado.");
 	                    }
 	                    return map;
 	                }
@@ -75,7 +79,7 @@ public class TelemetryConfig {
 			if (endpoint == null || endpoint.isEmpty()) {
 				endpoint = "http://localhost:4317";
 			}
-			System.out.println("endpoint otel" + endpoint);
+			log.info("endpoint otel: {}", endpoint);
 			
 			SpanExporter spanExporter = null;
 			MetricExporter metricExporter = null;
@@ -156,11 +160,11 @@ public class TelemetryConfig {
 	public static Span getContext(Headers headerList, Tracer tracer) {
 		String traceparent = null;
 		for(var e : headerList) {
-			System.out.println("chave: " + e.key());
+			log.info("chave: {}", e.key());
 			if (e.key().equals("traceparent"))
 				traceparent = (String) e.value(); 
 		}
-		System.out.println("trace current: " + traceparent);
+		log.info("trace current: {}", traceparent);
 		
 	
 		SpanBuilder span = tracer.spanBuilder("root span name").setSpanKind(SpanKind.CONSUMER);
