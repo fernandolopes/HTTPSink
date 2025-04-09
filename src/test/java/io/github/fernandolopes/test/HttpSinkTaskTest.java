@@ -26,9 +26,6 @@ public class HttpSinkTaskTest {
 	public void beforeEach() {
 	    connect = new HttpSinkConnect();
 	    props = new HashMap<String, String>();
-
-		System.setProperty("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318/v1/traces");
-		System.setProperty("OTEL_SERVICE_NAME", "connect-http-sink");
 		
 	    props.put("component.https.soTimeout", "30 seconds");
 		props.put("sink.url", "https://viacep.com.br");
@@ -83,7 +80,7 @@ public class HttpSinkTaskTest {
 		task.start(props);
 		
 		ConnectHeaders headers = new ConnectHeaders();
-		headers.addString("traceparent", "00-58907994c47bda904a9233c4b8aff021-844f12e2a579d978-01");
+		headers.addString("traceparent", "00-b074f323cc2a8d49dbb31dcdbfa51bf5-585da1276dc6f819-01");
 		
 		var content = "{\"userId\": 1, \"name\": \"Fernando\", \"id\": \"60335000\"}";
 		
@@ -97,7 +94,7 @@ public class HttpSinkTaskTest {
 				0L,
                 0L, 
                 TimestampType.CREATE_TIME, 
-                null, 
+                headers, 
                 "my-topic", 
                 0, 
                 0L);
