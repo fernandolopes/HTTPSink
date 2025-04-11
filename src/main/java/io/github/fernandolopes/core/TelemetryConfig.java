@@ -1,11 +1,19 @@
 package io.github.fernandolopes.core;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
+
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
@@ -17,6 +25,8 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.ContextPropagators;
+import io.opentelemetry.context.propagation.TextMapGetter;
+import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.exporter.logging.LoggingSpanExporter;
 import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
 import io.opentelemetry.exporter.otlp.http.metrics.OtlpHttpMetricExporter;
@@ -77,7 +87,7 @@ public class TelemetryConfig {
 	        }
 			var endpoint = System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT");
 			if (endpoint == null || endpoint.isEmpty()) {
-				endpoint = "http://localhost:4317";
+				endpoint = "http://otelcollectorpainelvendasstg.pmenos.com.br";
 			}
 			log.info("endpoint otel: {}", endpoint);
 			
@@ -167,7 +177,7 @@ public class TelemetryConfig {
 		log.info("trace current: {}", traceparent);
 		
 	
-		SpanBuilder span = tracer.spanBuilder("root span name").setSpanKind(SpanKind.CONSUMER);
+		SpanBuilder span = tracer.spanBuilder("put").setSpanKind(SpanKind.CONSUMER);
 
 		if (traceparent != null) {
 			String[] ids = Utils.extractIds(traceparent);
@@ -184,6 +194,43 @@ public class TelemetryConfig {
 		return span.startSpan();
 		
 	}
+	
+	private static final TextMapPropagator propagator =
+	        GlobalOpenTelemetry.getPropagators().getTextMapPropagator();
+	private static final Tracer tracer =
+	        GlobalOpenTelemetry.getTracer("connect-http-sink");
+	
+	public static Context startSpanFromKafkaHeaders(Headers headers, Tracer tracer) {
+		GlobalOpenTelemetry.getPropagators().getTextMapPropagator();
+		
+		TextMapGetter<Headers> getter = new TextMapGetter<>() {
+			@Override
+		    public Iterable<String> keys(Headers headers) {
+				Set<String> keys = new HashSet<>();
+		        var traces = headers != null ? headers.allWithName("traceparent").next().value() : List.of();
+		        log.info("1traces: {}", traces.toString());
+		        keys.add(traces.toString());
+		        return keys;
+		    }
+
+		    @Override
+		    public String get(Headers headers, String key) {
+		        if (headers == null) {
+		            return null;
+		        }
+		        Header header = headers.lastWithName(key);
+		        if (header == null) {
+		            return null;
+		        }
+		        Object value = header.value();
+		        return value != null ? value.toString() : null;
+		    }
+        };
+
+        Context extractedContext = propagator.extract(Context.current(), headers, getter);
+
+        return extractedContext;
+    }
 	
 	public static void GenerateLogs() {
 //		var loggerProvider = openTelemetry.getLogsBridge();

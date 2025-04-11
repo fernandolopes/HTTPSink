@@ -1,16 +1,18 @@
 package io.github.fernandolopes.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-
+import static org.mockito.Mockito.*;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkConnectorContext;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.apache.kafka.connect.sink.SinkTaskContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,12 +23,16 @@ public class HttpSinkTaskTest {
 	
 	HttpSinkConnect connect;
 	Map<String, String> props;
+	private SinkTaskContext mockContext;
 	
 	@BeforeEach
 	public void beforeEach() {
 	    connect = new HttpSinkConnect();
+        
 	    props = new HashMap<String, String>();
 		
+	    
+	    
 	    props.put("component.https.soTimeout", "30 seconds");
 		props.put("sink.url", "https://viacep.com.br");
 		props.put("sink.path.httpUri", "/ws/${key}/json/");
@@ -77,10 +83,14 @@ public class HttpSinkTaskTest {
 		connect.taskConfigs(1);
 
 		final HttpSinkTask task = new HttpSinkTask();
+		
+		mockContext = mock(SinkTaskContext.class);
+		task.initialize(mockContext);
+	    
 		task.start(props);
 		
 		ConnectHeaders headers = new ConnectHeaders();
-		headers.addString("traceparent", "00-b074f323cc2a8d49dbb31dcdbfa51bf5-585da1276dc6f819-01");
+		headers.addString("traceparent", "00-29643283a6bb6f7d411ed89c950195c2-3dd96f457b15e80a-01");
 		
 		var content = "{\"userId\": 1, \"name\": \"Fernando\", \"id\": \"60335000\"}";
 		
@@ -112,6 +122,10 @@ public class HttpSinkTaskTest {
 		connect.taskConfigs(1);
 		
 		final HttpSinkTask task = new HttpSinkTask();
+		
+		mockContext = mock(SinkTaskContext.class);
+		task.initialize(mockContext);
+		
 		task.start(props);
 		
 		var content = "{\"userId\": 1, \"name\": \"Fernando\", \"id\": \"60335000\"}";
@@ -133,8 +147,12 @@ public class HttpSinkTaskTest {
 		
 		var records = new ArrayList<SinkRecord>();
 		records.add(record);
-		
-		task.put(records);
+
+
+	    assertThrows(
+	        RuntimeException.class, // ou a exceção esperada
+	        () -> task.put(records)
+	    );
 	}
 
 }

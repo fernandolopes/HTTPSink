@@ -29,12 +29,14 @@ import org.apache.hc.core5.http.message.RequestLine;
 import org.apache.hc.core5.http.message.StatusLine;
 import org.apache.hc.core5.http.protocol.HttpCoreContext;
 import org.apache.hc.core5.io.CloseMode;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.apache.hc.core5.util.Timeout;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
+import org.apache.kafka.connect.sink.SinkTaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.github.fernandolopes.core.TelemetryConfig;
@@ -45,7 +47,9 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.Scope;
 
+import org.apache.hc.core5.ssl.TrustStrategy;
 
 public class HttpSinkTask extends SinkTask {
 
@@ -64,6 +68,11 @@ public class HttpSinkTask extends SinkTask {
 	int retryBackoffMs;
 	private ErrantRecordReporter reporter;
 	private Tracer tracer = null;
+	
+	@Override
+    public void initialize(SinkTaskContext context) {
+        this.context = context;
+    }
 	
 	@Override
 	public String version() {
@@ -145,8 +154,7 @@ public class HttpSinkTask extends SinkTask {
 	      return;
 	    }
 		
-		try {
-			
+		try {		 
 			httpRequester = RequesterBootstrap.bootstrap()
 	                .setStreamListener(new Http1StreamListener() {
 
@@ -178,40 +186,45 @@ public class HttpSinkTask extends SinkTask {
 			
 			for(final SinkRecord record : records) {
 				mainSpan = TelemetryConfig.getContext(record.headers(), tracer);
+				//Context parentContext = TelemetryConfig.startSpanFromKafkaHeaders(record.headers(), tracer);
 				Context parentContext = Context.current().with(mainSpan);
-				
-				try {
-					
-					span = tracer.spanBuilder("processRecord")
-							.setParent(parentContext)
-							.startSpan();
-					
-	                span.setAttribute("kafka.topic", record.topic());
-	                span.setAttribute("kafka.partition", record.kafkaPartition());
-	                span.setAttribute("kafka.offset", record.kafkaOffset());
-					
-					sendToHttp(record, span);
-					span.end();
-					
-					if (mainSpan != null)
-						mainSpan.end();
-				}
-				catch(ConnectException e) {
-					log.error("falha controlada de conectividade: {}",e.getMessage());
-					if (span != null) {
-						span.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem "+ e);
-						span.setAttribute("otel.status_code", "ERROR");
-						span.setAttribute("otel.status_description", "Falha ao enviar mensagem "+ e);
+				try(Scope scope = mainSpan.makeCurrent()) {
+					try {
+						
+						span = tracer.spanBuilder("processRecord")
+								.setParent(parentContext)
+								.startSpan();
+						
+		                span.setAttribute("kafka.topic", record.topic());
+		                span.setAttribute("kafka.partition", record.kafkaPartition());
+		                span.setAttribute("kafka.offset", record.kafkaOffset());
+						
+						sendToHttp(record, span);
 						span.end();
+						
+						if (mainSpan != null)
+							mainSpan.end();
 					}
-					if (remainingRetries > 0) {
-						remainingRetries--;
-				        context.timeout(retryBackoffMs);
-						throw new RetriableException("Falha ao enviar mensagem", e);
+					catch(ConnectException e) {
+						log.error("falha controlada de conectividade: {}",e.getMessage());
+						if (span != null) {
+							span.addEvent("tentativa de envio: "+remainingRetries);
+						}
+						if (remainingRetries > 0) {
+							remainingRetries--;
+					        context.timeout(retryBackoffMs);
+					        if (span != null) {
+								span.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem "+ e);
+								span.setAttribute("otel.status_code", "ERROR");
+								span.setAttribute("otel.status_description", "Falha ao enviar mensagem "+ e);
+								span.end();
+							}
+							throw new RetriableException("Falha ao enviar mensagem", e);
+						}
+						remainingRetries = maxRetries;
+						log.warn("A delivery has failed and the error reporting is enabled. Sending record to the DLQ");
+			            reporter.report(record, e);
 					}
-					remainingRetries = maxRetries;
-					log.warn("A delivery has failed and the error reporting is enabled. Sending record to the DLQ");
-		            reporter.report(record, e);
 				}
 				
 			}
@@ -222,13 +235,13 @@ public class HttpSinkTask extends SinkTask {
 		catch (Exception e)
 		{
 			log.error("falha controlada: {}", e.getMessage());
-			if (span != null) {
-				span.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem "+ e);
-				span.setAttribute("otel.status_code", "ERROR");
-				span.setAttribute("otel.status_description", "Falha ao enviar mensagem "+ e);
-				span.end();
+			if (mainSpan != null) {
+				mainSpan.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem "+ e);
+				mainSpan.setAttribute("otel.status_code", "ERROR");
+				mainSpan.setAttribute("otel.status_description", "Falha ao enviar mensagem "+ e);
+				mainSpan.end();
 			}
-			mainSpan.end();
+			//mainSpan.end();
 			throw new RetriableException("Falha ao enviar mensagem", e);
 		}
 	}
@@ -281,6 +294,9 @@ public class HttpSinkTask extends SinkTask {
 			reqSpan.setStatus((statusCode >= 200 && statusCode < 300)? StatusCode.OK : StatusCode.ERROR, (statusCode >= 200 && statusCode < 300)? "Requested successfully": "Failure");
 			reqSpan.setAttribute("http.status_code", statusCode);
             reqSpan.end();
+            if (statusCode >=400) {
+            	throw new ConnectException("Falha na requisição");
+            }
         } catch (IOException e) {
         	log.error(e.getMessage());
 			reqSpan.end();
