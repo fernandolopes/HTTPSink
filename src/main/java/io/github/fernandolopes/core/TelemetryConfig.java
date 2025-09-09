@@ -2,20 +2,20 @@ package io.github.fernandolopes.core;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
-
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.TraceFlags;
+import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.SpanKind;
@@ -51,6 +51,31 @@ public class TelemetryConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(TelemetryConfig.class);
 	
+	// Getter para extrair headers do Kafka
+	private static final TextMapGetter<Headers> KAFKA_HEADERS_GETTER = new TextMapGetter<Headers>() {
+		@Override
+		public Iterable<String> keys(Headers headers) {
+			Set<String> keys = new HashSet<>();
+			for (Header header : headers) {
+				keys.add(header.key());
+			}
+			return keys;
+		}
+
+		@Override
+		public String get(Headers headers, String key) {
+			if (headers == null) {
+				return null;
+			}
+			Header header = headers.lastWithName(key);
+			if (header == null) {
+				return null;
+			}
+			Object value = header.value();
+			return value != null ? value.toString() : null;
+		}
+	};
+
 	public static OpenTelemetry initOpenTelemetry() {
 		try {
         
@@ -87,7 +112,7 @@ public class TelemetryConfig {
 	        }
 			var endpoint = System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT");
 			if (endpoint == null || endpoint.isEmpty()) {
-				endpoint = "http://otelcollectorpainelvendasstg.pmenos.com.br";
+				endpoint = "http://localhost:4317";
 			}
 			log.info("endpoint otel: {}", endpoint);
 			
@@ -166,22 +191,22 @@ public class TelemetryConfig {
 			throw e;
 		}
 	}
-		
+
 	public static Span getContext(Headers headerList, Tracer tracer) {
 		String traceparent = null;
 		for(var e : headerList) {
 			log.info("chave: {}", e.key());
 			if (e.key().equals("traceparent"))
-				traceparent = (String) e.value(); 
+				traceparent = (String) e.value();
 		}
 		log.info("trace current: {}", traceparent);
-		
-	
+
+
 		SpanBuilder span = tracer.spanBuilder("put").setSpanKind(SpanKind.CONSUMER);
 
 		if (traceparent != null) {
 			String[] ids = Utils.extractIds(traceparent);
-			
+
 			SpanContext remoteContext = SpanContext.createFromRemoteParent(
 					ids[0],
 					ids[1],
@@ -192,17 +217,17 @@ public class TelemetryConfig {
 		}
 
 		return span.startSpan();
-		
+
 	}
-	
+
 	private static final TextMapPropagator propagator =
 	        GlobalOpenTelemetry.getPropagators().getTextMapPropagator();
 	private static final Tracer tracer =
 	        GlobalOpenTelemetry.getTracer("connect-http-sink");
-	
+
 	public static Context startSpanFromKafkaHeaders(Headers headers, Tracer tracer) {
 		GlobalOpenTelemetry.getPropagators().getTextMapPropagator();
-		
+
 		TextMapGetter<Headers> getter = new TextMapGetter<>() {
 			@Override
 		    public Iterable<String> keys(Headers headers) {
@@ -231,7 +256,22 @@ public class TelemetryConfig {
 
         return extractedContext;
     }
-	
+
+	/**
+	 * Extrai o contexto do trace dos headers Kafka
+	 */
+	public static Context extractContextFromKafkaHeaders(Headers headers, OpenTelemetry openTelemetry) {
+		if (headers == null) {
+			return Context.current();
+		}
+
+		TextMapPropagator propagator = openTelemetry.getPropagators().getTextMapPropagator();
+		Context extractedContext = propagator.extract(Context.current(), headers, KAFKA_HEADERS_GETTER);
+
+		log.debug("Contexto extraído dos headers Kafka: {}", extractedContext);
+		return extractedContext;
+	}
+
 	public static void GenerateLogs() {
 //		var loggerProvider = openTelemetry.getLogsBridge();
 //		var logger = loggerProvider.get("example");
