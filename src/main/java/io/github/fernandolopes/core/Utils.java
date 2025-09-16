@@ -7,14 +7,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import io.github.fernandolopes.HttpSinkTask;
 import org.apache.hc.core5.util.Timeout;
 import org.json.JSONObject;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Utils {
 
+    private static final Logger log = LoggerFactory.getLogger(Utils.class);
 	public static Timeout getTimeout(String currentTime) {
-		
+
 		Pattern pattner = Pattern.compile("^([\\d]*)\\s([a-zA-Z]*)$");
 		Matcher matcher = pattner.matcher(currentTime);
 		Timeout time = null;
@@ -54,19 +59,20 @@ public class Utils {
 	    }
 	    
 	    // Verificar se o output é "json" e se existem placeholders a serem substituídos
-	    if (output.equals("json")) {
-	        Pattern pattern = Pattern.compile("\\$\\{[a-zA-Z]+\\}", Pattern.CASE_INSENSITIVE);
-	        Matcher matcher = pattern.matcher(uriWithTopics);
+        if (output.equals("json")) {
+            Pattern pattern = Pattern.compile("\\$\\{([a-zA-Z0-9_]+)\\}", Pattern.CASE_INSENSITIVE);
+            Matcher matcher = pattern.matcher(uriWithTopics);
 
-	        // Iterar pelos placeholders encontrados na URI
-	        while (matcher.find()) {
-	            String placeholder = matcher.group();
-	            String keySearch = placeholder.replaceAll("\\$\\{|\\}", "");
-	            String value = extractValueFromRecord(record, keySearch);
-	            uriWithTopics = uriWithTopics.replaceAll(Pattern.quote(placeholder), value != null ? Matcher.quoteReplacement(value) : "");
-	        }
-	    }
-	    
+            StringBuffer sb = new StringBuffer();
+            while (matcher.find()) {
+                String keySearch = matcher.group(1);
+                String value = extractValueFromRecord(record, keySearch);
+                matcher.appendReplacement(sb, value != null ? Matcher.quoteReplacement(value) : "");
+            }
+            matcher.appendTail(sb);
+            uriWithTopics = sb.toString();
+        }
+        log.info("url: " + uriWithTopics);
 	    return uriWithTopics;
 	}
 	
@@ -111,7 +117,9 @@ public class Utils {
 	        Object value = map.get(key);
 	        return value != null ? value.toString() : null;
 	    }
-	    return null;
+        else {
+            return ((JSONObject) record).getString("cep");
+        }
 	}
 	
 	

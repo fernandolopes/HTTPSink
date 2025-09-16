@@ -1,22 +1,8 @@
 package io.github.fernandolopes;
 
-import java.io.IOException;
-import java.net.ConnectException;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
-import org.apache.hc.core5.http.ClassicHttpRequest;
-import org.apache.hc.core5.http.ClassicHttpResponse;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpConnection;
-import org.apache.hc.core5.http.HttpException;
-import org.apache.hc.core5.http.HttpHost;
-import org.apache.hc.core5.http.HttpRequest;
-import org.apache.hc.core5.http.HttpResponse;
+import io.github.fernandolopes.core.Utils;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.hc.core5.http.*;
 import org.apache.hc.core5.http.impl.Http1StreamListener;
 import org.apache.hc.core5.http.impl.bootstrap.HttpRequester;
 import org.apache.hc.core5.http.impl.bootstrap.RequesterBootstrap;
@@ -35,18 +21,19 @@ import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
-import org.apache.kafka.connect.sink.SinkTaskContext;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.github.fernandolopes.core.TelemetryConfig;
-import io.github.fernandolopes.core.Utils;
-import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Context;
-import io.opentelemetry.context.Scope;
+
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 public class HttpSinkTask extends SinkTask {
 
@@ -56,15 +43,14 @@ public class HttpSinkTask extends SinkTask {
 	private String requestUri = null;
 	private String method = null;
 	private String output = null;
+    private String converter = null;
 	private Timeout timeout;
 	private String topics;
 	private boolean copyHeaders = true;
-	private OpenTelemetry openTelemetry = null;
 	private int maxRetries;
 	private int retryBackoffMs;
 	private ErrantRecordReporter reporter;
-	private Tracer tracer = null;
-	
+
 	@Override
 	public String version() {
 		return new HttpSinkConnect().version();
@@ -74,20 +60,17 @@ public class HttpSinkTask extends SinkTask {
 	public void start(Map<String, String> props) {
 		log.info("Iniciando HttpSinkTask");
 
-		openTelemetry = TelemetryConfig.initOpenTelemetry();
-		tracer = openTelemetry.getTracer(HttpSinkTask.class.getName(), "1.0.0");
-		
 		AbstractConfig config = new AbstractConfig(HttpSinkConnectConfig.conf(), props);
-		
+
 		String data = config.getString(HttpSinkConnectConfig.SINK_HTTPS_COMPONENT_SO_TIMEOUT_CONF);
-		topics = config.getString("topics");
+		topics = config.getString(HttpSinkConnectConfig.SINK_HTTPS_COMPONENT_TOPICS_CONF);
 		output = config.getString(HttpSinkConnectConfig.SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_CONF);
-		
+        converter = config.getString(HttpSinkConnectConfig.SINK_HTTPS_COMPONENT_VALUE_CONVERTER_CONF);
 		timeout = Timeout.ofSeconds(30);
 		maxRetries = config.getInt(HttpSinkConnectConfig.MAX_RETRIES);
 		retryBackoffMs = config.getInt(HttpSinkConnectConfig.RETRY_BACKOFF_MS);
 		log.info("Timeout: {}", data);
-		
+
 		if (context != null) {
             try {
                 reporter = context.errantRecordReporter();
@@ -96,13 +79,13 @@ public class HttpSinkTask extends SinkTask {
                 reporter = null;
             }
         }
-		
+
 		String urlBase = config.getString(HttpSinkConnectConfig.SINK_URL_CONF);
 		requestUri = config.getString(HttpSinkConnectConfig.SINK_HTTPS_PATH_HTTP_URI_CONF);
 		method = config.getString(HttpSinkConnectConfig.SINK_HTTPS_ENDPOINT_HTTP_METHOD_CONF);
-		
+
 		try {
-			if(!method.equals("GET") && 
+			if(!method.equals("GET") &&
 			   !method.equals("POST") &&
 			   !method.equals("PUT") &&
 			   !method.equals("PATCH") &&
@@ -112,21 +95,21 @@ public class HttpSinkTask extends SinkTask {
 			   !method.equals("HEAD")) {
 				throw new Exception("Error method not suported.: " + method);
 			}
-		} 
+		}
 		catch (Exception e) {
 			log.error(e.getMessage());
 			throw new RetriableException("Falha ao enviar mensagem", e);
 		}
-		
+
 		copyHeaders = config.getBoolean(HttpSinkConnectConfig.SINK_HTTPS_ENDPOINT_COPY_HEADERS_CONF);
-		
+
 		URI url = URI.create(urlBase);
 		String schema = url.getScheme();
 		String host = url.getHost();
 		int port = url.getPort();
-		
+
 		target = new HttpHost(schema, host, port);
-		
+
 		log.info("Schema: " + schema);
 		log.info("Host: " + host);
 		log.info("Porta: " + port);
@@ -139,8 +122,8 @@ public class HttpSinkTask extends SinkTask {
 		if (records.isEmpty()) {
 	      return;
 	    }
-		
-		try {		 
+
+		try {
 			httpRequester = RequesterBootstrap.bootstrap()
 	                .setStreamListener(new Http1StreamListener() {
 
@@ -172,9 +155,9 @@ public class HttpSinkTask extends SinkTask {
             for (final SinkRecord record : records) {
                 processRecord(record);
             }
-			
+
 			httpRequester.close();
-		
+
 		}
 		catch (Exception e)
 		{
@@ -184,66 +167,17 @@ public class HttpSinkTask extends SinkTask {
 	}
 
     private void processRecord(SinkRecord record) {
-        Span consumerSpan = null;
-        Span processSpan = null;
-        Context extractedContext;
         int recordRetries = maxRetries;
 
         while (recordRetries > 0) {
             try {
-                // Extrair contexto dos headers Kafka usando a implementação correta
-                extractedContext = TelemetryConfig.extractContextFromKafkaHeaders(record.headers(), openTelemetry);
+                sendToHttp(record);
 
-                // Criar span consumidor com o contexto extraído
-                consumerSpan = tracer.spanBuilder("kafka.consume")
-                        .setParent(extractedContext)
-                        .setSpanKind(SpanKind.CONSUMER)
-                        .setAttribute("messaging.system", "kafka")
-                        .setAttribute("messaging.destination", record.topic())
-                        .setAttribute("messaging.operation", "receive")
-                        .setAttribute("kafka.topic", record.topic())
-                        .setAttribute("kafka.partition", record.kafkaPartition())
-                        .setAttribute("kafka.offset", record.kafkaOffset())
-                        .startSpan();
-
-                // Tornar o span consumidor ativo
-                try (Scope consumerScope = consumerSpan.makeCurrent()) {
-                    // Criar span de processamento como filho do span consumidor
-                    processSpan = tracer.spanBuilder("record.process")
-                            .setSpanKind(SpanKind.INTERNAL)
-                            .setAttribute("kafka.topic", record.topic())
-                            .setAttribute("kafka.partition", record.kafkaPartition())
-                            .setAttribute("kafka.offset", record.kafkaOffset())
-                            .setAttribute("retry.attempt", maxRetries - recordRetries + 1)
-                            .startSpan();
-
-                    try (Scope processScope = processSpan.makeCurrent()) {
-                        sendToHttp(record, processSpan);
-
-                        // Sucesso - sair do loop de retry
-                        processSpan.setStatus(StatusCode.OK, "Mensagem enviada com sucesso");
-                        consumerSpan.setStatus(StatusCode.OK, "Mensagem processada com sucesso");
-                        return; // Registro processado com sucesso
-                    } finally {
-                        processSpan.end();
-                    }
-                } finally {
-                    consumerSpan.end();
-                }
-
+                // Sucesso - sair do loop de retry
+                return; // Registro processado com sucesso
             } catch (ConnectException e) {
                 recordRetries--;
                 log.warn("Falha no envio do registro (tentativa {}/{}): {}", maxRetries - recordRetries, maxRetries, e.getMessage());
-
-                if (processSpan != null) {
-                    processSpan.addEvent("Falha na tentativa: " + (maxRetries - recordRetries));
-                    processSpan.setStatus(StatusCode.ERROR, "Falha ao enviar mensagem: " + e.getMessage());
-                    processSpan.end();
-                }
-
-                if (consumerSpan != null) {
-                    consumerSpan.addEvent("Retry necessário: " + (maxRetries - recordRetries));
-                }
 
                 if (recordRetries > 0) {
                     // Ainda há tentativas restantes - aguardar antes da próxima tentativa
@@ -257,11 +191,6 @@ public class HttpSinkTask extends SinkTask {
                 } else {
                     // Esgotar todas as tentativas - enviar para DLQ
                     log.error("Todas as tentativas esgotadas para o registro. Enviando para DLQ: {}", e.getMessage());
-
-                    if (consumerSpan != null) {
-                        consumerSpan.setStatus(StatusCode.ERROR, "Falha após " + maxRetries + " tentativas");
-                        consumerSpan.end();
-                    }
 
                     if (reporter != null) {
                         try {
@@ -280,16 +209,6 @@ public class HttpSinkTask extends SinkTask {
                 // Erro não recuperável
                 log.error("Erro não recuperável no processamento do registro: {}", e.getMessage());
 
-                if (processSpan != null) {
-                    processSpan.setStatus(StatusCode.ERROR, "Erro não recuperável: " + e.getMessage());
-                    processSpan.end();
-                }
-
-                if (consumerSpan != null) {
-                    consumerSpan.setStatus(StatusCode.ERROR, "Erro não recuperável");
-                    consumerSpan.end();
-                }
-
                 if (reporter != null) {
                     try {
                         reporter.report(record, e);
@@ -303,99 +222,44 @@ public class HttpSinkTask extends SinkTask {
         }
 	}
 
-	private void sendToHttp(SinkRecord record, Span parentSpan) throws Exception {
+	private void sendToHttp(SinkRecord record) throws Exception {
 
-		String data = record.value().toString();
+		var data = record.value().toString();
 		log.info(data);
-		
+
 		ClassicHttpRequest request = getRequested(record);
 
 		HttpCoreContext coreContext = HttpCoreContext.create();
-		
-		// Criar span HTTP cliente como filho do span de processamento
-		Span httpSpan = tracer.spanBuilder("http.client.request")
-				.setSpanKind(SpanKind.CLIENT)
-				.setAttribute("http.method", request.getMethod())
-				.setAttribute("http.url", request.getUri().toString())
-				.setAttribute("http.scheme", request.getScheme())
-				.setAttribute("http.target", request.getPath())
-				.startSpan();
 
-		try (Scope httpScope = httpSpan.makeCurrent()) {
-			// Injetar headers de trace na requisição HTTP
-			injectTraceHeadersIntoHttpRequest(request, httpSpan);
+		try (ClassicHttpResponse response = httpRequester.execute(target, request, timeout, coreContext)) {
+			int statusCode = response.getCode();
+			log.info(requestUri + " --> " + statusCode);
 
-			try (ClassicHttpResponse response = httpRequester.execute(target, request, timeout, coreContext)) {
-				int statusCode = response.getCode();
-				log.info(requestUri + " --> " + statusCode);
-
-				// Adicionar atributos de resposta ao span
-				httpSpan.setAttribute("http.status_code", statusCode);
-				httpSpan.setAttribute("http.response.status_code", statusCode);
-
-				if (statusCode != 204) {
-					String payload = EntityUtils.toString(response.getEntity());
-					log.info(payload);
-					httpSpan.addEvent("Response received");
-				}
-				log.info("==============");
-
-				Properties prop = new Properties();
-				prop.load(HttpSinkTask.class.getClassLoader().getResourceAsStream("config.properties"));
-				log.info(prop.getProperty("service.framework.name"));
-
-				// Definir status do span baseado no código de resposta
-				if (statusCode >= 200 && statusCode < 300) {
-					httpSpan.setStatus(StatusCode.OK, "Request successful");
-				} else if (statusCode >= 400) {
-					httpSpan.setStatus(StatusCode.ERROR, "HTTP error: " + statusCode);
-					throw new ConnectException("Falha na requisição HTTP: " + statusCode);
-				}
-
-			} catch (IOException | HttpException e) {
-				log.error("Erro na requisição HTTP: {}", e.getMessage());
-				httpSpan.setStatus(StatusCode.ERROR, "HTTP request failed: " + e.getMessage());
-				httpSpan.recordException(e);
-				throw e;
+			if (statusCode != 204) {
+				String payload = EntityUtils.toString(response.getEntity());
+				log.info(payload);
 			}
-		} finally {
-			httpSpan.end();
-		}
-	}
+			log.info("==============");
 
-	/**
-	 * Injeta os headers de trace na requisição HTTP para propagação
-	 */
-	private void injectTraceHeadersIntoHttpRequest(ClassicHttpRequest request, Span span) {
-		try {
-			// Usar o propagador para injetar headers de trace
-			Context currentContext = Context.current().with(span);
+			Properties prop = new Properties();
+			prop.load(HttpSinkTask.class.getClassLoader().getResourceAsStream("config.properties"));
+			log.info(prop.getProperty("service.framework.name"));
 
-			// Criar um mapa para os headers
-			Map<String, String> headers = new HashMap<>();
-
-			// Usar o propagador para injetar headers no mapa
-			openTelemetry.getPropagators().getTextMapPropagator().inject(
-				currentContext,
-				headers,
-				(carrier, key, value) -> carrier.put(key, value)
-			);
-
-			// Adicionar os headers à requisição
-			for (Map.Entry<String, String> entry : headers.entrySet()) {
-				request.addHeader(entry.getKey(), entry.getValue());
-				log.debug("Header de trace injetado: {} = {}", entry.getKey(), entry.getValue());
+			// Verificar se a requisição foi bem-sucedida
+			if (statusCode >= 400) {
+				throw new ConnectException("Falha na requisição HTTP: " + statusCode);
 			}
 
-		} catch (Exception e) {
-			log.warn("Erro ao injetar headers de trace: {}", e.getMessage());
+		} catch (IOException | HttpException e) {
+			log.error("Erro na requisição HTTP: {}", e.getMessage());
+			throw e;
 		}
 	}
 
 	private ClassicHttpRequest getRequested(final SinkRecord record) throws Exception {
 	    String key = record.key() != null ? record.key().toString() : null;
-	    Object content = record.value();
 
+        var content = parseRecord(record, converter);
 	    // Substituir placeholders na URI
 	    String finalRequestUri = Utils.replaceRequestUri(this.requestUri, key, topics, output, content);
 
@@ -423,7 +287,7 @@ public class HttpSinkTask extends SinkTask {
 	    		@SuppressWarnings("unchecked")
 				HashMap<String, Object> map = (HashMap<String, Object>) content;
     			var input = Utils.convertToInputStream(map);
-	    		
+
 	    		BasicHttpEntity entity = new BasicHttpEntity(input, contentType);
 			    crb.setEntity(entity);
 	    	}
@@ -439,5 +303,43 @@ public class HttpSinkTask extends SinkTask {
 			httpRequester.close(CloseMode.IMMEDIATE);
 		}
 	}
+
+    private Object parseRecord(SinkRecord record, String converter) {
+        Object data = null;
+
+        if (converter.contains("JsonConverter")) {
+            // JSON normalmente vem como Struct ou Map
+            Object value = record.value();
+            if (value instanceof String) {
+                JSONObject json = new JSONObject((String) value);
+                if (json.has("payload")) {
+                    data = json.get("payload");
+                } else {
+                    data = json;
+                }
+            } else if (value instanceof Map) {
+                Map<String, Object> mapValue = (Map<String, Object>) value;
+                data = mapValue.get("payload");
+            } else {
+                data = value; // fallback
+            }
+        } else if (converter.contains("AvroConverter")) {
+                if (record.value() instanceof GenericRecord) {
+                GenericRecord avroRecord = (GenericRecord) record.value();
+
+                // Pega um campo específico do Avro
+                Object payload = avroRecord.get("payload");
+                data = payload != null ? payload.toString() : avroRecord.toString();
+            } else {
+                throw new IllegalArgumentException("Valor não é um GenericRecord para AvroConverter");
+            }
+        } else if (converter.contains("StringConverter")) {
+            data = record.value().toString();
+        } else {
+            throw new IllegalArgumentException("Converter não suportado: " + converter);
+        }
+
+        return data;
+    }
 
 }

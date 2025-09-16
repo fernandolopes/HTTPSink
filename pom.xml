@@ -6,7 +6,7 @@ Projeto para iniciar testes de customizar um conector.
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.fernandolopes</groupId>
   <artifactId>HTTPSink</artifactId>
-  <version>0.0.26</version>
+  <version>0.0.31</version>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Projeto base para um connector kafka http sink</description>
   <url>https://github.com/fernandolopes/HTTPSink</url>
@@ -31,6 +31,13 @@ Projeto para iniciar testes de customizar um conector.
         <layout>default</layout>
     </repository>
   </distributionManagement>
+  <repositories>
+      <repository>
+          <id>confluent</id>
+          <name>Confluent Maven Repository</name>
+          <url>https://packages.confluent.io/maven/</url>
+      </repository>
+  </repositories>
 
   <build>
     <plugins>
@@ -170,16 +177,28 @@ Projeto para iniciar testes de customizar um conector.
   </scm>
   
   <dependencies>
+      <dependency>
+          <groupId>io.confluent</groupId>
+          <artifactId>kafka-connect-avro-converter</artifactId>
+          <version>8.0.0</version>
+      </dependency>
+
+      <!-- Adicione também a dependência para o Schema Registry Client -->
+      <dependency>
+          <groupId>io.confluent</groupId>
+          <artifactId>kafka-schema-registry-client</artifactId>
+          <version>8.0.0</version>
+      </dependency>
     <!-- Kafka -->
 	<dependency>
 	    <groupId>org.apache.kafka</groupId>
 	    <artifactId>connect-api</artifactId>
-	    <version>3.7.0</version>
+	    <version>3.8.0</version>
 	</dependency>
 	<dependency>
 	    <groupId>org.apache.kafka</groupId>
 	    <artifactId>connect-transforms</artifactId>
-	    <version>3.7.0</version>
+	    <version>3.8.0</version>
 	    <scope>provided</scope>
 	</dependency>
 	<dependency>
@@ -221,56 +240,16 @@ Projeto para iniciar testes de customizar um conector.
 	    <scope>test</scope>
 	</dependency>
 	<dependency>
-	    <groupId>io.opentelemetry.instrumentation</groupId>
-	    <artifactId>opentelemetry-kafka-clients-2.6</artifactId>
-	    <version>1.19.0-alpha</version>
-	</dependency>
-	<dependency>
-	    <groupId>io.opentelemetry</groupId>
-	    <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
-	    <version>1.36.0</version>
-	</dependency>
-	<dependency>
-	    <groupId>io.opentelemetry</groupId>
-	    <artifactId>opentelemetry-sdk</artifactId>
-	    <version>1.36.0</version>
-	</dependency>
-	<dependency>
-	    <groupId>io.opentelemetry</groupId>
-	    <artifactId>opentelemetry-exporter-otlp</artifactId>
-	    <version>1.36.0</version>
-	</dependency>
-  	<dependency>
-      	<groupId>io.opentelemetry</groupId>
-      	<artifactId>opentelemetry-exporter-logging</artifactId>
-      	<version>1.36.0</version>
-  	</dependency>
-	<!--<dependency>
-	    <groupId>io.opentelemetry</groupId>
-	    <artifactId>opentelemetry-sdk-logs</artifactId>
-	    <version>1.36.0</version>
-	</dependency>
-	<dependency>
-	    <groupId>io.opentelemetry</groupId>
-	    <artifactId>opentelemetry-sdk-trace</artifactId>
-	    <version>1.36.0</version>
-	</dependency>-->
-	<dependency>
 	    <groupId>org.mockito</groupId>
 	    <artifactId>mockito-core</artifactId>
-	    <version>4.8.1</version> <!-- ou a mais recente -->
+	    <version>4.8.1</version>
 	    <scope>test</scope>
 	</dependency>
+	<!-- Apache Avro - versão compatível com Confluent 8.0.0 -->
 	<dependency>
-        <groupId>io.opentelemetry</groupId>
-        <artifactId>opentelemetry-api</artifactId>
-        <version>1.36.0</version>
-    </dependency>
-    <dependency>
-        <groupId>io.opentelemetry.instrumentation</groupId>
-        <artifactId>opentelemetry-logback-appender-1.0</artifactId>
-        <version>2.14.0-alpha</version>
-        <scope>runtime</scope>
-    </dependency>
+	    <groupId>org.apache.avro</groupId>
+	    <artifactId>avro</artifactId>
+	    <version>1.11.3</version>
+	</dependency>
   </dependencies>
 </project>

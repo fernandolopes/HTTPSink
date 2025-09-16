@@ -57,6 +57,10 @@ public class HttpSinkConnectConfig extends AbstractConfig {
     public static final String SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_CONF = "output.data.format";
     public static final String SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DOC = "output value for the request can be: string, json. default is string";
     public static final String SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DEFAULT = "string";
+
+    public static final String SINK_HTTPS_COMPONENT_VALUE_CONVERTER_CONF = "value.converter";
+    public static final String SINK_HTTPS_COMPONENT_VALUE_CONVERTER_DOC = "Define which converter to use to serialize the value. Default is org.apache.kafka.connect.json.JsonConverter";
+    public static final String SINK_HTTPS_COMPONENT_VALUE_CONVERTER_DEFAULT = "org.apache.kafka.connect.storage.StringConverter";
     
     public static final String MAX_RETRIES = "max.retries";
     public static final int MAX_RETRIES_DEFAULT = 10;
@@ -67,6 +71,10 @@ public class HttpSinkConnectConfig extends AbstractConfig {
     public static final int RETRY_BACKOFF_MS_DEFAULT = 3000;
     public static final String RETRY_BACKOFF_MS_DOC = "The time in milliseconds to wait following an error before a retry attempt is made.";
     public static final String RETRY_BACKOFF_MS_DISPLAY = "Retry Backoff (millis)";
+
+    public static final String SINK_HTTPS_COMPONENT_TOPICS_CONF = "topics";
+    public static final String SINK_HTTPS_COMPONENT_TOPICS_DOC = "A list of topics to consume.";
+    public static final String SINK_HTTPS_COMPONENT_TOPICS_DEFAULT = null;
     
 
     protected HttpSinkConnectConfig(ConfigDef definition, Map<?, ?> originals, Map<String, ?> configProviderProps, boolean doLog) {
@@ -98,9 +106,10 @@ public class HttpSinkConnectConfig extends AbstractConfig {
         conf.define(SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_CONF,          Type.STRING,  		  SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_DEFAULT,          Importance.MEDIUM, 			SINK_HTTPS_ENDPOINT_CUSTOM_HOST_HEADER_DOC);
         conf.define(SINK_HTTPS_COMPONENT_SO_TIMEOUT_CONF,                 Type.STRING,  		  SINK_HTTPS_COMPONENT_SO_TIMEOUT_DEFAULT,                 Importance.LOW, 				SINK_HTTPS_COMPONENT_SO_TIMEOUT_DOC);
         conf.define(SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_CONF,         Type.STRING,  		  SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DEFAULT,         Importance.LOW, 				SINK_HTTPS_COMPONENT_OUTPUT_DATA_FORMAT_DOC);
-        conf.define("topics", 											  Type.STRING,  		  null, 												   Importance.HIGH, 			"");
+        conf.define(SINK_HTTPS_COMPONENT_TOPICS_CONF, 					  Type.STRING,  		  SINK_HTTPS_COMPONENT_TOPICS_DEFAULT, 					   Importance.HIGH, 			SINK_HTTPS_COMPONENT_TOPICS_DOC);
         conf.define(MAX_RETRIES, 										  Type.INT, 			  MAX_RETRIES_DEFAULT, 									   Importance.LOW, 				MAX_RETRIES_DOC);
         conf.define(RETRY_BACKOFF_MS, 								      Type.INT, 			  RETRY_BACKOFF_MS_DEFAULT, 							   Importance.LOW, 				RETRY_BACKOFF_MS_DOC);
+        conf.define(SINK_HTTPS_COMPONENT_VALUE_CONVERTER_CONF,            Type.STRING,            SINK_HTTPS_COMPONENT_VALUE_CONVERTER_DEFAULT,            Importance.MEDIUM,           SINK_HTTPS_COMPONENT_VALUE_CONVERTER_DOC);
         return conf;
 	}
 
