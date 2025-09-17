@@ -308,12 +308,24 @@ public class HttpSinkTask extends SinkTask {
 
 				// Verificar se a requisição foi bem-sucedida
 				if (statusCode >= 400) {
-                }
-            } catch (IOException | HttpException e) {
-                log.error("Erro na requisição HTTP: {}", e.getMessage());
-                throw e;
-            }
-        }
+					telemetryManager.addSpanAttribute(httpSpan, "http.error", true);
+					httpSpan.setStatus(StatusCode.ERROR, "HTTP " + statusCode);
+					throw new ConnectException("Falha na requisição HTTP: " + statusCode);
+				} else {
+					telemetryManager.addSpanAttribute(httpSpan, "http.error", false);
+					httpSpan.setStatus(StatusCode.OK);
+				}
+
+			} catch (IOException | HttpException e) {
+				telemetryManager.recordException(httpSpan, e);
+				telemetryManager.addSpanAttribute(httpSpan, "http.error", true);
+				httpSpan.setStatus(StatusCode.ERROR, e.getMessage());
+				log.error("Erro na requisição HTTP: {}", e.getMessage());
+				throw e;
+			}
+		} finally {
+			telemetryManager.finishSpan(httpSpan);
+		}
 	}
 
 	private ClassicHttpRequest getRequested(final SinkRecord record) throws Exception {
