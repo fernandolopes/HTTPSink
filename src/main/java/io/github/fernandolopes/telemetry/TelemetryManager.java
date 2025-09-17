@@ -56,6 +56,15 @@ public class TelemetryManager {
             log.info("Inicializando OpenTelemetry - Service: {}, Version: {}, Endpoint: {}",
                     serviceName, serviceVersion, otlpEndpoint);
 
+            // Verificar se o GlobalOpenTelemetry já foi configurado
+            if (GlobalOpenTelemetry.get() != OpenTelemetry.noop()) {
+                log.info("OpenTelemetry já foi inicializado globalmente, reutilizando instância existente");
+                openTelemetry = GlobalOpenTelemetry.get();
+                tracer = openTelemetry.getTracer("kafka-connect-http-sink", serviceVersion);
+                initialized = true;
+                return;
+            }
+
             // Criar resource
             Resource resource = Resource.getDefault()
                     .merge(Resource.builder()
