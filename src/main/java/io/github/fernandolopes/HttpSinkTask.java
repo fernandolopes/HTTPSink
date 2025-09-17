@@ -1,6 +1,10 @@
 package io.github.fernandolopes;
 
 import io.github.fernandolopes.core.Utils;
+import io.github.fernandolopes.telemetry.TelemetryManager;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.context.Scope;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hc.core5.http.*;
 import org.apache.hc.core5.http.impl.Http1StreamListener;
@@ -17,6 +21,7 @@ import org.apache.hc.core5.http.protocol.HttpCoreContext;
 import org.apache.hc.core5.io.CloseMode;
 import org.apache.hc.core5.util.Timeout;
 import org.apache.kafka.common.config.AbstractConfig;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -24,7 +29,6 @@ import org.apache.kafka.connect.sink.SinkTask;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.URI;
@@ -50,6 +54,7 @@ public class HttpSinkTask extends SinkTask {
 	private int maxRetries;
 	private int retryBackoffMs;
 	private ErrantRecordReporter reporter;
+	private TelemetryManager telemetryManager;
 
 	@Override
 	public String version() {
@@ -59,6 +64,10 @@ public class HttpSinkTask extends SinkTask {
 	@Override
 	public void start(Map<String, String> props) {
 		log.info("Iniciando HttpSinkTask");
+
+		// Inicializar telemetria
+		telemetryManager = TelemetryManager.getInstance();
+		telemetryManager.initialize(props);
 
 		AbstractConfig config = new AbstractConfig(HttpSinkConnectConfig.conf(), props);
 
@@ -123,7 +132,12 @@ public class HttpSinkTask extends SinkTask {
 	      return;
 	    }
 
-		try {
+		// Criar span para o batch de registros
+		Span batchSpan = telemetryManager.createSpan("kafka-connect-batch-process");
+		telemetryManager.addSpanAttribute(batchSpan, "batch.size", records.size());
+		telemetryManager.addSpanAttribute(batchSpan, "connector.name", "http-sink");
+
+		try (Scope batchScope = telemetryManager.activateSpan(batchSpan)) {
 			httpRequester = RequesterBootstrap.bootstrap()
 	                .setStreamListener(new Http1StreamListener() {
 
@@ -158,102 +172,148 @@ public class HttpSinkTask extends SinkTask {
 
 			httpRequester.close();
 
+			telemetryManager.addSpanAttribute(batchSpan, "batch.status", "success");
+			batchSpan.setStatus(StatusCode.OK);
+
 		}
 		catch (Exception e)
 		{
+			telemetryManager.recordException(batchSpan, e);
+			telemetryManager.addSpanAttribute(batchSpan, "batch.status", "error");
+			batchSpan.setStatus(StatusCode.ERROR, e.getMessage());
+
             log.error("Erro geral no processamento do batch: {}", e.getMessage());
             throw new RetriableException("Falha geral no processamento", e);
+		} finally {
+			telemetryManager.finishSpan(batchSpan);
 		}
 	}
 
     private void processRecord(SinkRecord record) {
-        int recordRetries = maxRetries;
+        // Criar span para cada registro
+        Span recordSpan = telemetryManager.createSpan("kafka-connect-record-process");
+        telemetryManager.addSpanAttribute(recordSpan, "kafka.topic", record.topic());
+        telemetryManager.addSpanAttribute(recordSpan, "kafka.partition", record.kafkaPartition());
+        telemetryManager.addSpanAttribute(recordSpan, "kafka.offset", record.kafkaOffset());
 
-        while (recordRetries > 0) {
-            try {
-                sendToHttp(record);
+        try (Scope recordScope = telemetryManager.activateSpan(recordSpan)) {
+            int recordRetries = maxRetries;
 
-                // Sucesso - sair do loop de retry
-                return; // Registro processado com sucesso
-            } catch (ConnectException e) {
-                recordRetries--;
-                log.warn("Falha no envio do registro (tentativa {}/{}): {}", maxRetries - recordRetries, maxRetries, e.getMessage());
+            while (recordRetries > 0) {
+                try {
+                    sendToHttp(record);
 
-                if (recordRetries > 0) {
-                    // Ainda há tentativas restantes - aguardar antes da próxima tentativa
-                    try {
-                        Thread.sleep(retryBackoffMs);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        log.error("Thread interrompida durante o backoff", ie);
-                        break;
+                    // Sucesso - sair do loop de retry
+                    telemetryManager.addSpanAttribute(recordSpan, "record.status", "success");
+                    telemetryManager.addSpanAttribute(recordSpan, "retry.attempts", maxRetries - recordRetries);
+                    recordSpan.setStatus(StatusCode.OK);
+                    return; // Registro processado com sucesso
+                } catch (ConnectException e) {
+                    recordRetries--;
+                    telemetryManager.addSpanAttribute(recordSpan, "retry.current", maxRetries - recordRetries + 1);
+                    log.warn("Falha no envio do registro (tentativa {}/{}): {}", maxRetries - recordRetries, maxRetries, e.getMessage());
+
+                    if (recordRetries > 0) {
+                        // Ainda há tentativas restantes - aguardar antes da próxima tentativa
+                        try {
+                            Thread.sleep(retryBackoffMs);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            log.error("Thread interrompida durante o backoff", ie);
+                            break;
+                        }
+                    } else {
+                        // Esgotar todas as tentativas - enviar para DLQ
+                        log.error("Todas as tentativas esgotadas para o registro. Enviando para DLQ: {}", e.getMessage());
+
+                        telemetryManager.recordException(recordSpan, e);
+                        telemetryManager.addSpanAttribute(recordSpan, "record.status", "failed_to_dlq");
+                        telemetryManager.addSpanAttribute(recordSpan, "retry.attempts", maxRetries);
+                        recordSpan.setStatus(StatusCode.ERROR, "Max retries exceeded");
+
+                        if (reporter != null) {
+                            try {
+                                reporter.report(record, e);
+                                log.info("Registro enviado para DLQ com sucesso");
+                                telemetryManager.addSpanAttribute(recordSpan, "dlq.sent", true);
+                            } catch (Exception dlqError) {
+                                log.error("Falha ao enviar registro para DLQ: {}", dlqError.getMessage());
+                                telemetryManager.addSpanAttribute(recordSpan, "dlq.sent", false);
+                                telemetryManager.recordException(recordSpan, dlqError);
+                            }
+                        } else {
+                            log.warn("ErrantRecordReporter não disponível. Registro será perdido.");
+                            telemetryManager.addSpanAttribute(recordSpan, "dlq.available", false);
+                        }
+                        return;
                     }
-                } else {
-                    // Esgotar todas as tentativas - enviar para DLQ
-                    log.error("Todas as tentativas esgotadas para o registro. Enviando para DLQ: {}", e.getMessage());
+
+                } catch (Exception e) {
+                    // Erro não recuperável
+                    log.error("Erro não recuperável no processamento do registro: {}", e.getMessage());
+
+                    telemetryManager.recordException(recordSpan, e);
+                    telemetryManager.addSpanAttribute(recordSpan, "record.status", "error_non_recoverable");
+                    recordSpan.setStatus(StatusCode.ERROR, "Non-recoverable error");
 
                     if (reporter != null) {
                         try {
                             reporter.report(record, e);
-                            log.info("Registro enviado para DLQ com sucesso");
+                            log.info("Registro com erro não recuperável enviado para DLQ");
+                            telemetryManager.addSpanAttribute(recordSpan, "dlq.sent", true);
                         } catch (Exception dlqError) {
                             log.error("Falha ao enviar registro para DLQ: {}", dlqError.getMessage());
+                            telemetryManager.addSpanAttribute(recordSpan, "dlq.sent", false);
                         }
-                    } else {
-                        log.warn("ErrantRecordReporter não disponível. Registro será perdido.");
                     }
                     return;
                 }
-
-            } catch (Exception e) {
-                // Erro não recuperável
-                log.error("Erro não recuperável no processamento do registro: {}", e.getMessage());
-
-                if (reporter != null) {
-                    try {
-                        reporter.report(record, e);
-                        log.info("Registro com erro não recuperável enviado para DLQ");
-                    } catch (Exception dlqError) {
-                        log.error("Falha ao enviar registro para DLQ: {}", dlqError.getMessage());
-                    }
-                }
-                return;
             }
+        } finally {
+            telemetryManager.finishSpan(recordSpan);
         }
 	}
 
 	private void sendToHttp(SinkRecord record) throws Exception {
+		// Criar span para requisição HTTP
+		Span httpSpan = telemetryManager.createSpan("http-request");
+		telemetryManager.addSpanAttribute(httpSpan, "http.method", method);
+		telemetryManager.addSpanAttribute(httpSpan, "http.url", target.toString());
 
-		var data = record.value().toString();
-		log.info(data);
+		try (Scope httpScope = telemetryManager.activateSpan(httpSpan)) {
+			var data = record.value().toString();
+			log.info(data);
 
-		ClassicHttpRequest request = getRequested(record);
+			ClassicHttpRequest request = getRequested(record);
+			telemetryManager.addSpanAttribute(httpSpan, "http.request_uri", requestUri);
 
-		HttpCoreContext coreContext = HttpCoreContext.create();
+			HttpCoreContext coreContext = HttpCoreContext.create();
 
-		try (ClassicHttpResponse response = httpRequester.execute(target, request, timeout, coreContext)) {
-			int statusCode = response.getCode();
-			log.info(requestUri + " --> " + statusCode);
+			try (ClassicHttpResponse response = httpRequester.execute(target, request, timeout, coreContext)) {
+				int statusCode = response.getCode();
+				telemetryManager.addSpanAttribute(httpSpan, "http.status_code", statusCode);
 
-			if (statusCode != 204) {
-				String payload = EntityUtils.toString(response.getEntity());
-				log.info(payload);
-			}
-			log.info("==============");
+				log.info(requestUri + " --> " + statusCode);
 
-			Properties prop = new Properties();
-			prop.load(HttpSinkTask.class.getClassLoader().getResourceAsStream("config.properties"));
-			log.info(prop.getProperty("service.framework.name"));
+				if (statusCode != 204) {
+					String payload = EntityUtils.toString(response.getEntity());
+					log.info(payload);
+					telemetryManager.addSpanAttribute(httpSpan, "http.response_size", payload.length());
+				}
+				log.info("==============");
 
-			// Verificar se a requisição foi bem-sucedida
-			if (statusCode >= 400) {
-				throw new ConnectException("Falha na requisição HTTP: " + statusCode);
-			}
+				Properties prop = new Properties();
+				prop.load(HttpSinkTask.class.getClassLoader().getResourceAsStream("config.properties"));
+				log.info(prop.getProperty("service.framework.name"));
 
-		} catch (IOException | HttpException e) {
-			log.error("Erro na requisição HTTP: {}", e.getMessage());
-			throw e;
-		}
+				// Verificar se a requisição foi bem-sucedida
+				if (statusCode >= 400) {
+                }
+            } catch (IOException | HttpException e) {
+                log.error("Erro na requisição HTTP: {}", e.getMessage());
+                throw e;
+            }
+        }
 	}
 
 	private ClassicHttpRequest getRequested(final SinkRecord record) throws Exception {
@@ -317,16 +377,30 @@ public class HttpSinkTask extends SinkTask {
                 } else {
                     data = json;
                 }
+            } else if (value instanceof Struct) {
+                // Kafka Connect Struct - o caso mais comum com JsonConverter
+                Struct struct = (Struct) value;
+                try {
+                    // Tentar pegar o campo "payload" primeiro
+                    if (struct.schema().field("payload") != null) {
+                        data = struct.get("payload");
+                    } else {
+                        // Se não houver campo "payload", usar a struct inteira
+                        data = struct;
+                    }
+                } catch (Exception e) {
+                    log.warn("Erro ao processar Struct: {}", e.getMessage());
+                    data = struct;
+                }
             } else if (value instanceof Map) {
                 Map<String, Object> mapValue = (Map<String, Object>) value;
-                data = mapValue.get("payload");
+                data = mapValue.get("payload") != null ? mapValue.get("payload") : mapValue;
             } else {
                 data = value; // fallback
             }
         } else if (converter.contains("AvroConverter")) {
-                if (record.value() instanceof GenericRecord) {
+            if (record.value() instanceof GenericRecord) {
                 GenericRecord avroRecord = (GenericRecord) record.value();
-
                 // Pega um campo específico do Avro
                 Object payload = avroRecord.get("payload");
                 data = payload != null ? payload.toString() : avroRecord.toString();

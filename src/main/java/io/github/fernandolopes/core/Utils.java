@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import io.github.fernandolopes.HttpSinkTask;
+//import io.github.fernandolopes.HttpSinkTask;
 import org.apache.hc.core5.util.Timeout;
 import org.json.JSONObject;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -121,6 +121,4 @@ public class Utils {
             return ((JSONObject) record).getString("cep");
         }
 	}
-	
-	
 }
