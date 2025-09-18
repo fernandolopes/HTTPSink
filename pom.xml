@@ -6,7 +6,7 @@ Projeto para iniciar testes de customizar um conector.
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.fernandolopes</groupId>
   <artifactId>HTTPSink</artifactId>
-  <version>0.0.31</version>
+  <version>0.0.36</version>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Projeto base para um connector kafka http sink</description>
   <url>https://github.com/fernandolopes/HTTPSink</url>
@@ -17,9 +17,13 @@ Projeto para iniciar testes de customizar um conector.
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <maven.compiler.release>${java.version}</maven.compiler.release>
-    <maven-scm-provider-gitexe.version>1.11.2</maven-scm-provider-gitexe.version>
+    <maven-scm-provider-gitexe.version>2.1.0</maven-scm-provider-gitexe.version>
     <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
     <maven-source-plugin.version>2.2.1</maven-source-plugin.version>
+    <io.opentelemetry-version>1.36.0</io.opentelemetry-version>
+    <org-slf4j-version>2.0.17</org-slf4j-version>
+    <org.apache.kafka-version>3.8.0</org.apache.kafka-version>
+    <io.confluent-version>8.0.0</io.confluent-version>
   </properties>
   
   <distributionManagement>
@@ -136,21 +140,63 @@ Projeto para iniciar testes de customizar um conector.
           </configuration>
         </plugin>
         <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
-        </configuration>
-      </plugin>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>single</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <descriptorRefs>
+                <descriptorRef>jar-with-dependencies</descriptorRef>
+              </descriptorRefs>
+              <finalName>${project.artifactId}-${project.version}</finalName>
+              <appendAssemblyId>false</appendAssemblyId>
+              <attach>true</attach>
+            </configuration>
+        </plugin>
+        <!-- Desabilitado temporariamente devido a conflito com Java 21
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <version>3.4.1</version>
+            <executions>
+                <execution>
+                    <phase>package</phase>
+                    <goals>
+                        <goal>shade</goal>
+                    </goals>
+                    <configuration>
+                        <createDependencyReducedPom>false</createDependencyReducedPom>
+                        <relocations>
+                            <relocation>
+                                <pattern>io.opentelemetry</pattern>
+                                <shadedPattern>io.github.fernandolopes.shaded.io.opentelemetry</shadedPattern>
+                            </relocation>
+                            <relocation>
+                                <pattern>io.grpc</pattern>
+                                <shadedPattern>io.github.fernandolopes.shaded.io.grpc</shadedPattern>
+                            </relocation>
+                        </relocations>
+                        <filters>
+                            <filter>
+                                <artifact>*:*</artifact>
+                                <excludes>
+                                    <exclude>META-INF/services/io.opentelemetry.**</exclude>
+                                </excludes>
+                            </filter>
+                        </filters>
+                        <transformers>
+                            <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                        </transformers>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+        -->
     </plugins>
 </build>
   
@@ -177,39 +223,43 @@ Projeto para iniciar testes de customizar um conector.
   </scm>
   
   <dependencies>
-      <dependency>
-          <groupId>io.confluent</groupId>
-          <artifactId>kafka-connect-avro-converter</artifactId>
-          <version>8.0.0</version>
-      </dependency>
-
+    <dependency>
+      <groupId>io.confluent</groupId>
+      <artifactId>kafka-connect-avro-converter</artifactId>
+      <version>${io.confluent-version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.18.0</version>
+    </dependency>
       <!-- Adicione também a dependência para o Schema Registry Client -->
-      <dependency>
-          <groupId>io.confluent</groupId>
-          <artifactId>kafka-schema-registry-client</artifactId>
-          <version>8.0.0</version>
-      </dependency>
+    <dependency>
+      <groupId>io.confluent</groupId>
+      <artifactId>kafka-schema-registry-client</artifactId>
+      <version>${io.confluent-version}</version>
+    </dependency>
     <!-- Kafka -->
 	<dependency>
 	    <groupId>org.apache.kafka</groupId>
 	    <artifactId>connect-api</artifactId>
-	    <version>3.8.0</version>
+	    <version>${org.apache.kafka-version}</version>
 	</dependency>
 	<dependency>
 	    <groupId>org.apache.kafka</groupId>
 	    <artifactId>connect-transforms</artifactId>
-	    <version>3.8.0</version>
+	    <version>${org.apache.kafka-version}</version>
 	    <scope>provided</scope>
 	</dependency>
 	<dependency>
 	    <groupId>org.slf4j</groupId>
 	    <artifactId>slf4j-api</artifactId>
-	    <version>2.0.12</version>
+	    <version>${org-slf4j-version}</version>
 	</dependency>
 	<dependency>
 	    <groupId>org.slf4j</groupId>
 	    <artifactId>slf4j-simple</artifactId>
-	    <version>2.0.12</version>
+	    <version>${org-slf4j-version}</version>
 	    <scope>runtime</scope>
 	</dependency>
 	<dependency>
@@ -253,38 +303,38 @@ Projeto para iniciar testes de customizar um conector.
     <dependency>
       <groupId>io.opentelemetry</groupId>
       <artifactId>opentelemetry-api</artifactId>
-      <version>1.54.0</version>
+      <version>${io.opentelemetry-version}</version>
     </dependency>
     <dependency>
       <groupId>io.opentelemetry</groupId>
       <artifactId>opentelemetry-exporter-otlp</artifactId>
-      <version>1.54.0</version>
+      <version>${io.opentelemetry-version}</version>
     </dependency>
     <dependency>
       <groupId>io.opentelemetry</groupId>
       <artifactId>opentelemetry-sdk-trace</artifactId>
-      <version>1.54.0</version>
+      <version>${io.opentelemetry-version}</version>
     </dependency>
     <dependency>
       <groupId>io.opentelemetry</groupId>
       <artifactId>opentelemetry-sdk-metrics</artifactId>
-      <version>1.54.0</version>
+      <version>${io.opentelemetry-version}</version>
     </dependency>
     <dependency>
       <groupId>io.opentelemetry</groupId>
       <artifactId>opentelemetry-sdk-logs</artifactId>
-      <version>1.54.0</version>
+      <version>${io.opentelemetry-version}</version>
     </dependency>
     <dependency>
       <groupId>io.opentelemetry</groupId>
       <artifactId>opentelemetry-sdk</artifactId>
-      <version>1.54.0</version>
+      <version>${io.opentelemetry-version}</version>
     </dependency>
 	<!-- Apache Avro - versão compatível com Confluent 8.0.0 -->
 	<dependency>
 	    <groupId>org.apache.avro</groupId>
 	    <artifactId>avro</artifactId>
-	    <version>1.11.3</version>
+	    <version>1.11.4</version>
 	</dependency>
   </dependencies>
 </project>
