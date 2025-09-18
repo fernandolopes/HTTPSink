@@ -295,11 +295,14 @@ public class HttpSinkTask extends SinkTask {
 
 				log.info(requestUri + " --> " + statusCode);
 
+				String responseBody = "";
 				if (statusCode != 204) {
-					String payload = EntityUtils.toString(response.getEntity());
-					log.info(payload);
-					telemetryManager.addSpanAttribute(httpSpan, "http.response_size", payload.length());
+					responseBody = EntityUtils.toString(response.getEntity());
+					log.info(responseBody);
+                    httpSpan.addEvent(responseBody);
+					telemetryManager.addSpanAttribute(httpSpan, "http.response_size", responseBody.length());
 				}
+
 				log.info("==============");
 
 				Properties prop = new Properties();

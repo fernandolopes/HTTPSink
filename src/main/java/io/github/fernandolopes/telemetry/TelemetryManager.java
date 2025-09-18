@@ -126,35 +126,11 @@ public class TelemetryManager {
             tracer = openTelemetry.getTracer("kafka-connect-http-sink", serviceVersion);
             initialized = true;
 
-            // Testar com um span simples
-            testTelemetryConnection();
-
             return true;
 
         } catch (Exception e) {
             log.warn("❌ Falha ao inicializar OTLP: {}", e.getMessage());
             return false;
-        }
-    }
-
-    private void testTelemetryConnection() {
-        try {
-            log.info("🧪 Testando conexão com telemetria...");
-            Span testSpan = tracer.spanBuilder("telemetry-test")
-                    .setAttribute("test.component", "kafka-connect-http-sink")
-                    .setAttribute("test.timestamp", System.currentTimeMillis())
-                    .startSpan();
-
-            try (Scope scope = testSpan.makeCurrent()) {
-                testSpan.addEvent("Telemetria inicializada com sucesso");
-                Thread.sleep(10); // Pequena pausa para simular trabalho
-            } finally {
-                testSpan.end();
-            }
-
-            log.info("✅ Span de teste criado e enviado!");
-        } catch (Exception e) {
-            log.warn("⚠️ Erro no teste de telemetria: {}", e.getMessage());
         }
     }
 
@@ -282,6 +258,24 @@ public class TelemetryManager {
                 span.recordException(throwable);
             } catch (Exception e) {
                 log.debug("Erro ao gravar exceção: {}", e.getMessage());
+            }
+        }
+    }
+
+    public void addSpanEvent(Span span, String eventName, Map<String, String> attributes) {
+        if (span != null && eventName != null && telemetryEnabled && span.isRecording()) {
+            try {
+                if (attributes != null && !attributes.isEmpty()) {
+                    io.opentelemetry.api.common.AttributesBuilder attributesBuilder = Attributes.builder();
+                    for (Map.Entry<String, String> entry : attributes.entrySet()) {
+                        attributesBuilder.put(io.opentelemetry.api.common.AttributeKey.stringKey(entry.getKey()), entry.getValue());
+                    }
+                    span.addEvent(eventName, attributesBuilder.build());
+                } else {
+                    span.addEvent(eventName);
+                }
+            } catch (Exception e) {
+                log.debug("Erro ao adicionar evento ao span: {}", e.getMessage());
             }
         }
     }
