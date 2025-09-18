@@ -8,8 +8,8 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-//import io.github.fernandolopes.HttpSinkTask;
 import org.apache.hc.core5.util.Timeout;
+import org.apache.kafka.connect.data.Struct;
 import org.json.JSONObject;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -107,18 +107,40 @@ public class Utils {
 	
 	// Método para extrair o valor do registro (record) baseado na chave (key)
 	private static String extractValueFromRecord(Object record, String key) {
-	    if (record instanceof String) {
-	        JSONObject json = new JSONObject((String) record);
-	        
-	        return json.optString(key);
-	    } else if (record instanceof HashMap) {
-	        @SuppressWarnings("unchecked")
-	        HashMap<String, Object> map = (HashMap<String, Object>) record;
-	        Object value = map.get(key);
-	        return value != null ? value.toString() : null;
+	    try {
+	        if (record instanceof String) {
+	            JSONObject json = new JSONObject((String) record);
+	            return json.optString(key, null);
+	        } else if (record instanceof HashMap) {
+	            @SuppressWarnings("unchecked")
+	            HashMap<String, Object> map = (HashMap<String, Object>) record;
+	            Object value = map.get(key);
+	            return value != null ? value.toString() : null;
+	        } else if (record instanceof Struct) {
+	            Struct struct = (Struct) record;
+	            try {
+	                // Verificar se o campo existe no schema
+	                if (struct.schema().field(key) != null) {
+	                    Object value = struct.get(key);
+	                    return value != null ? value.toString() : null;
+	                } else {
+	                    log.warn("Campo '{}' não encontrado no schema da Struct", key);
+	                    return null;
+	                }
+	            } catch (Exception e) {
+	                log.error("Erro ao extrair campo '{}' da Struct: {}", key, e.getMessage());
+	                return null;
+	            }
+	        } else if (record instanceof JSONObject) {
+	            JSONObject json = (JSONObject) record;
+	            return json.optString(key, null);
+	        } else {
+	            log.warn("Tipo de record não suportado: {}. Tentando converter para String.", record.getClass().getSimpleName());
+	            return record.toString();
+	        }
+	    } catch (Exception e) {
+	        log.error("Erro geral ao extrair valor do record para chave '{}': {}", key, e.getMessage());
+	        return null;
 	    }
-        else {
-            return ((JSONObject) record).getString("cep");
-        }
 	}
 }

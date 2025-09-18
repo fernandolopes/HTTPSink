@@ -383,28 +383,42 @@ public class HttpSinkTask extends SinkTask {
             // JSON normalmente vem como Struct ou Map
             Object value = record.value();
             if (value instanceof String) {
-                JSONObject json = new JSONObject((String) value);
-                if (json.has("payload")) {
-                    data = json.get("payload");
-                } else {
-                    data = json;
+                try {
+                    JSONObject json = new JSONObject((String) value);
+                    if (json.has("payload")) {
+                        data = json.get("payload");
+                    } else {
+                        data = json;
+                    }
+                } catch (Exception e) {
+                    log.warn("Erro ao processar String como JSON: {}", e.getMessage());
+                    data = value; // fallback para string original
                 }
             } else if (value instanceof Struct) {
                 // Kafka Connect Struct - o caso mais comum com JsonConverter
                 Struct struct = (Struct) value;
                 try {
+                    // Converter Struct para Map para uso posterior
+                    Map<String, Object> structMap = convertStructToMap(struct);
+
                     // Tentar pegar o campo "payload" primeiro
                     if (struct.schema().field("payload") != null) {
-                        data = struct.get("payload");
+                        Object payload = struct.get("payload");
+                        if (payload instanceof Struct) {
+                            data = convertStructToMap((Struct) payload);
+                        } else {
+                            data = payload;
+                        }
                     } else {
-                        // Se não houver campo "payload", usar a struct inteira
-                        data = struct;
+                        // Se não houver campo "payload", usar a struct convertida
+                        data = structMap;
                     }
                 } catch (Exception e) {
                     log.warn("Erro ao processar Struct: {}", e.getMessage());
-                    data = struct;
+                    data = convertStructToMap(struct); // fallback
                 }
             } else if (value instanceof Map) {
+                @SuppressWarnings("unchecked")
                 Map<String, Object> mapValue = (Map<String, Object>) value;
                 data = mapValue.get("payload") != null ? mapValue.get("payload") : mapValue;
             } else {
@@ -428,4 +442,22 @@ public class HttpSinkTask extends SinkTask {
         return data;
     }
 
+    // Método auxiliar para converter Struct em Map
+    private Map<String, Object> convertStructToMap(Struct struct) {
+        Map<String, Object> map = new HashMap<>();
+        struct.schema().fields().forEach(field -> {
+            try {
+                Object value = struct.get(field);
+                if (value instanceof Struct) {
+                    // Recursivamente converter Structs aninhadas
+                    map.put(field.name(), convertStructToMap((Struct) value));
+                } else {
+                    map.put(field.name(), value);
+                }
+            } catch (Exception e) {
+                log.warn("Erro ao converter campo '{}' da Struct: {}", field.name(), e.getMessage());
+            }
+        });
+        return map;
+    }
 }
