@@ -44,11 +44,11 @@ public class TelemetryManager {
 
         try {
             String serviceName = getConfigValue(config, "OTEL_SERVICE_NAME", "kafka-connect-http-sink");
-            String serviceVersion = getConfigValue(config, "OTEL_SERVICE_VERSION", "0.0.36");
+            String serviceVersion = getConfigValue(config, "OTEL_SERVICE_VERSION", "0.0.39");
             String otlpEndpoint = getConfigValue(config, "OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317");
             String environment = getConfigValue(config, "OTEL_RESOURCE_ATTRIBUTES", "development");
 
-            log.info("Inicializando OpenTelemetry 1.36.0");
+            log.info("Inicializando OpenTelemetry 1.39.0");
             log.info("Service: {}, Version: {}", serviceName, serviceVersion);
             log.info("OTLP Endpoint: {}", otlpEndpoint);
             log.info("Environment: {}", environment);
