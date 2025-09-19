@@ -4,6 +4,7 @@ import io.github.fernandolopes.core.Utils;
 import io.github.fernandolopes.telemetry.TelemetryManager;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hc.core5.http.*;
@@ -132,8 +133,12 @@ public class HttpSinkTask extends SinkTask {
 	      return;
 	    }
 
-		// Criar span para o batch de registros
-		Span batchSpan = telemetryManager.createSpan("kafka-connect-batch-process");
+		// Para o batch, usar o contexto do primeiro record se disponível
+		SinkRecord firstRecord = records.iterator().next();
+		Context batchContext = telemetryManager.extractContextFromHeaders(firstRecord.headers());
+
+		// Criar span para o batch de registros usando o contexto extraído
+		Span batchSpan = telemetryManager.createSpanWithContext("kafka-connect-batch-process", batchContext);
 		telemetryManager.addSpanAttribute(batchSpan, "batch.size", records.size());
 		telemetryManager.addSpanAttribute(batchSpan, "connector.name", "http-sink");
 
@@ -190,8 +195,11 @@ public class HttpSinkTask extends SinkTask {
 	}
 
     private void processRecord(SinkRecord record) {
-        // Criar span para cada registro
-        Span recordSpan = telemetryManager.createSpan("kafka-connect-record-process");
+        // Extrair contexto dos headers do record atual
+        Context recordContext = telemetryManager.extractContextFromHeaders(record.headers());
+
+        // Criar span para cada registro usando o contexto extraído
+        Span recordSpan = telemetryManager.createSpanWithContext("kafka-connect-record-process", recordContext);
         telemetryManager.addSpanAttribute(recordSpan, "kafka.topic", record.topic());
         telemetryManager.addSpanAttribute(recordSpan, "kafka.partition", record.kafkaPartition());
         telemetryManager.addSpanAttribute(recordSpan, "kafka.offset", record.kafkaOffset());
@@ -275,7 +283,8 @@ public class HttpSinkTask extends SinkTask {
 	}
 
 	private void sendToHttp(SinkRecord record) throws Exception {
-		// Criar span para requisição HTTP
+		// O span HTTP deve ser filho do span do record (que já está ativo)
+		// Usar o contexto atual que já foi propagado pelo recordSpan
 		Span httpSpan = telemetryManager.createSpan("http-request");
 		telemetryManager.addSpanAttribute(httpSpan, "http.method", method);
 		telemetryManager.addSpanAttribute(httpSpan, "http.url", target.toString());
@@ -285,7 +294,8 @@ public class HttpSinkTask extends SinkTask {
 			log.info(data);
 
 			ClassicHttpRequest request = getRequested(record);
-			telemetryManager.addSpanAttribute(httpSpan, "http.request_uri", requestUri);
+            var modifiedUrl = request.getUri().toString();
+			telemetryManager.addSpanAttribute(httpSpan, "http.request_uri", modifiedUrl);
 
 			HttpCoreContext coreContext = HttpCoreContext.create();
 
@@ -293,7 +303,7 @@ public class HttpSinkTask extends SinkTask {
 				int statusCode = response.getCode();
 				telemetryManager.addSpanAttribute(httpSpan, "http.status_code", statusCode);
 
-				log.info(requestUri + " --> " + statusCode);
+				log.info(modifiedUrl + " --> " + statusCode);
 
 				String responseBody = "";
 				if (statusCode != 204) {

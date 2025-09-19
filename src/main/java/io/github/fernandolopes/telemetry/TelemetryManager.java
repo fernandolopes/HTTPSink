@@ -7,17 +7,22 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
+import io.opentelemetry.context.propagation.TextMapGetter;
+import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
+import org.apache.kafka.connect.header.Header;
+import org.apache.kafka.connect.header.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.HashMap;
 
 public class TelemetryManager {
 
@@ -44,11 +49,11 @@ public class TelemetryManager {
 
         try {
             String serviceName = getConfigValue(config, "OTEL_SERVICE_NAME", "kafka-connect-http-sink");
-            String serviceVersion = getConfigValue(config, "OTEL_SERVICE_VERSION", "0.0.39");
+            String serviceVersion = getConfigValue(config, "OTEL_SERVICE_VERSION", "0.0.42");
             String otlpEndpoint = getConfigValue(config, "OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317");
             String environment = getConfigValue(config, "OTEL_RESOURCE_ATTRIBUTES", "development");
 
-            log.info("Inicializando OpenTelemetry 1.39.0");
+            log.info("Inicializando OpenTelemetry 1.34.0");
             log.info("Service: {}, Version: {}", serviceName, serviceVersion);
             log.info("OTLP Endpoint: {}", otlpEndpoint);
             log.info("Environment: {}", environment);
@@ -287,6 +292,83 @@ public class TelemetryManager {
             } catch (Exception e) {
                 log.debug("Erro ao finalizar span: {}", e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Extrai o contexto de trace dos headers da mensagem Kafka
+     */
+    public Context extractContextFromHeaders(Headers headers) {
+        if (!initialized || !telemetryEnabled || headers == null) {
+            return Context.current();
+        }
+
+        try {
+            // Converter headers do Kafka para Map<String, String>
+            Map<String, String> headerMap = new HashMap<>();
+            for (Header header : headers) {
+                if (header.value() != null) {
+                    headerMap.put(header.key(), header.value().toString());
+                }
+            }
+
+            // Usar o propagator para extrair o contexto
+            TextMapPropagator propagator = openTelemetry.getPropagators().getTextMapPropagator();
+            Context extractedContext = propagator.extract(Context.current(), headerMap, new TextMapGetter<Map<String, String>>() {
+                @Override
+                public Iterable<String> keys(Map<String, String> carrier) {
+                    return carrier.keySet();
+                }
+
+                @Override
+                public String get(Map<String, String> carrier, String key) {
+                    return carrier.get(key);
+                }
+            });
+
+            log.debug("Contexto extraído dos headers: {}", extractedContext != Context.current() ? "encontrado" : "não encontrado");
+            return extractedContext;
+        } catch (Exception e) {
+            log.warn("Erro ao extrair contexto dos headers: {}", e.getMessage());
+            return Context.current();
+        }
+    }
+
+    /**
+     * Cria um span com contexto extraído dos headers
+     */
+    public Span createSpanWithHeaders(String operationName, Headers headers) {
+        Context extractedContext = extractContextFromHeaders(headers);
+        return createSpanWithContext(operationName, extractedContext);
+    }
+
+    /**
+     * Cria um span com contexto específico
+     */
+    public Span createSpanWithContext(String operationName, Context context) {
+        if (!initialized) {
+            log.warn("TelemetryManager não inicializado, retornando span inválido");
+            return Span.getInvalid();
+        }
+
+        if (!telemetryEnabled) {
+            return Span.getInvalid();
+        }
+
+        try {
+            Span span = tracer.spanBuilder(operationName)
+                    .setParent(context)
+                    .startSpan();
+
+            // Adicionar informações básicas automaticamente
+            span.setAttribute("component", "kafka-connect-http-sink");
+            span.setAttribute("otel.scope.name", "kafka-connect-http-sink");
+            span.setAttribute("otel.scope.version", "0.0.40");
+
+            return span;
+        } catch (Exception e) {
+            log.error("Erro ao criar span com contexto: {}", e.getMessage());
+            return Span.getInvalid();
         }
     }
 
